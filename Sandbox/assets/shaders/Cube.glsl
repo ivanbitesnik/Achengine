@@ -16,7 +16,7 @@ void main()
 {
     gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
     FragmentPosition = vec3(u_Transform * vec4(a_Position, 1.0));
-    Normal = a_Normal;
+    Normal = mat3(transpose(inverse(u_Transform))) * a_Normal;
 }
 
 #type fragment
@@ -25,6 +25,7 @@ void main()
 uniform vec3 u_ObjectColor;
 uniform vec3 u_LightColor;
 uniform vec3 u_LightPosition;
+uniform vec3 u_ViewPosition;
 
 in vec3 Normal;
 in vec3 FragmentPosition;
@@ -36,21 +37,18 @@ void main()
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * u_LightColor;
 
-    vec3 normX = normalize(vec3(Normal.x, 0.0, 0.0));
-    vec3 normY = normalize(vec3(0.0, Normal.y, 0.0));
-    vec3 normZ = normalize(vec3(0.0, 0.0, Normal.z));
-    vec3 lightDir = normalize(FragmentPosition - u_LightPosition); 
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(u_LightPosition - FragmentPosition); 
 
-    float diffX = max(dot(normX, lightDir), 0.0);
-    float diffY = max(dot(normY, lightDir), 0.0);
-    float diffZ = max(dot(normZ, lightDir), 0.0);
-
-    float diff = diffZ;
-    if (diffX != 0.0) diff = diffX;
-    else if (diffY != 0.0) diff = diffY;
-
+    float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * u_LightColor;
 
-    vec3 result = (ambient + diffuse) * u_ObjectColor;
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(u_ViewPosition - FragmentPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * u_LightColor; 
+
+    vec3 result = (ambient + diffuse + specular) * u_ObjectColor;
     color = vec4(result, 1.0);
 }

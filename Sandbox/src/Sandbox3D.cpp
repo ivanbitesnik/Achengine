@@ -40,17 +40,17 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	Achengine::RenderCommand::SetClearColor({ 0.0f, 0.4f, 1.0f, 0.5f });
 	Achengine::RenderCommand::Clear();
 
-	angle = glm::mod(angle, 360.0f);
-	angle += 0.5f;
 	pos = glm::mod(pos, 360.0f);
-	pos += 0.01f;
-	const float x = glm::cos(pos);
-	const float y = glm::sin(pos);
+	pos += 0.025f;
+	const float x = glm::cos(pos) * 15.0f;
+	const float y = glm::sin(pos) * 15.0f;
+	const float dif = x > y ? x - y : y - x;
+	const float z = dif + 5.0f;
 
 	Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
-	Achengine::Renderer::DrawLight(ToTransform({ -30.0f, 0.0f, 0.0f }), { 5.0f, 5.0f, 5.0f });
-	Achengine::Renderer::DrawQuad(ToTransform({ 0.0f, 0.0f, -5.0f }), { 50.0f, 50.0f }, { 0.1f, 0.1f, 0.1f, 1.0f }, 90.0f, { 1.0f, 0.0f, 0.0f });
-	Achengine::Renderer::DrawCube(ToTransform({ -30.0f, 20.0f, 0.0f }), { 5.0f, 5.0f, 5.0f }, { 1.0f, 0.5f, 0.31f });
+	Achengine::Renderer::DrawLight(ToTransform({ x, y, z }), { 5.0f, 5.0f, 5.0f });
+	Achengine::Renderer::DrawQuad(ToTransform({ 0.0f, 0.0f, 0.0f }), { 50.0f, 50.0f }, { 0.1f, 0.1f, 0.1f, 1.0f }, 90.0f, { 1.0f, 0.0f, 0.0f });
+	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, 20.0f }), { 5.0f, 5.0f, 5.0f }, { 1.0f, 0.5f, 0.31f });
 
 	//Achengine::Renderer::DrawQuad({ 1.0f / x, 1.0f / x, 0.0f }, { 3.0f, 3.0f }, m_SquareColor, angle, { 1.0f, 1.0f, 1.0f });
 	//Achengine::Renderer::DrawQuad({ x , x, 0.0f }, { 3.0f, 3.0f }, glm::vec4(1.0f) - glm::vec4(m_SquareColor.r, m_SquareColor.g, m_SquareColor.b, 0.0f), angle, { 1.0f, 1.0f, 1.0f });

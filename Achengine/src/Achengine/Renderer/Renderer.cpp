@@ -11,6 +11,7 @@ namespace Achengine
 {
 	struct RendererStorage
 	{
+		EditorCamera* camera;
 		glm::mat4 ViewProjectionMatrix;
 		Texture2D* WhiteTexture;
 		VertexArray* QuadVertexArray;
@@ -90,6 +91,7 @@ namespace Achengine
 	void Renderer::BeginScene(Camera* camera)
 	{
 		EditorCamera* SceneCamera = (EditorCamera*)camera;
+		s_RenderData->camera = SceneCamera;
 		s_RenderData->ViewProjectionMatrix = (SceneCamera->GetViewProjection() * SceneCamera->GetViewMatrix());
 		s_RenderData->TextureShader->Bind();
 		s_RenderData->TextureShader->SetMat4("u_ViewProjection", s_RenderData->ViewProjectionMatrix);
@@ -158,7 +160,6 @@ namespace Achengine
 	void Renderer::DrawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec3& color, const float angle, const glm::vec3& rot)
 	{
 		s_RenderData->CubeShader->Bind();
-		s_RenderData->CubeShader->SetFloat3("u_LightPosition", { 0.0f, 0.0f, 0.0f });
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
 		transform = glm::rotate(transform, glm::radians(angle), rot);
@@ -166,6 +167,7 @@ namespace Achengine
 		s_RenderData->CubeShader->SetMat4("u_Transform", transform);
 		s_RenderData->CubeShader->SetFloat3("u_ObjectColor", color);
 		s_RenderData->CubeShader->SetFloat3("u_LightColor", { 1.0f, 1.0f, 1.0f });
+		s_RenderData->CubeShader->SetFloat3("u_ViewPosition", s_RenderData->camera->GetPosition());
 
 		s_RenderData->CubeVertexArray->Bind();
 		RenderCommand::DrawIndexed(s_RenderData->CubeVertexArray);
@@ -173,6 +175,9 @@ namespace Achengine
 
 	void Renderer::DrawLight(const glm::vec3& position, const glm::vec3& size, const float angle, const glm::vec3& rot)
 	{
+		s_RenderData->CubeShader->Bind();
+		s_RenderData->CubeShader->SetFloat3("u_LightPosition", position);
+
 		s_RenderData->LightSourceShader->Bind();
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
