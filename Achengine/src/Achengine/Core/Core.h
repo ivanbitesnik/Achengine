@@ -3,7 +3,6 @@
 #include <memory>
 #include <glm/glm.hpp>
 
-#ifdef ACHENGINE_PLATFORM_WINDOWS
 #if ACHENGINE_DYNAMIC_LINK
 	#ifdef ACHENGINE_BUILD_DLL
 		#define ACHENGINE_API _declspec(dllexport)
@@ -12,9 +11,6 @@
 	#endif
 #else
 	#define ACHENGINE_API
-#endif
-#else
-	#error Achengine only supports Windows!
 #endif
 
 #ifdef ACHENGINE_ENABLE_ASSERTS

@@ -20,6 +20,8 @@
 #include "Achengine/Core/KeyCodes.h"
 #include "Achengine/Core/MouseButtonCodes.h"
 #include "Achengine/Renderer/CameraController.h"
+#include "Achengine/Renderer/OrthographicCameraController.h"
+#include "Achengine/Renderer/EditorCameraController.h"
 // ----------------------------------------
 
 // --- Renderer ---------------------------

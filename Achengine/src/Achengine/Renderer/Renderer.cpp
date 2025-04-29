@@ -33,66 +33,46 @@ namespace Achengine
 		// Texture shader /////////////////////////////////////////////////
 		s_RenderData->QuadVertexArray = VertexArray::Create();
 
-		int arraySize;
-		float* quadVertices = CreateQuadVertexArray(arraySize);
-		VertexBuffer* squareVertexBuffer = VertexBuffer::Create(arraySize, quadVertices);
+		VertexBuffer* squareVertexBuffer = VertexBuffer::Create(sizeof(quadVertexArray), quadVertexArray);
 		squareVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float2, "a_TexCoord" }
 		});
 		s_RenderData->QuadVertexArray->AddVertexBuffer(squareVertexBuffer);
 
-		unsigned int* squareIndices = CreateQuadIndexArray(arraySize);
-		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(arraySize / sizeof(uint32_t), squareIndices);
+		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(quadIndexArray) / sizeof(uint32_t), quadIndexArray);
 		s_RenderData->QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
 
 		s_RenderData->WhiteTexture = Texture2D::Create(1, 1);
 		uint32_t whiteTextureData = 0xffffffff;
 		s_RenderData->WhiteTexture->SetData(&whiteTextureData, sizeof(whiteTextureData));
 
-		s_RenderData->TextureShader = Shader::Create("assets/shaders/Texture.glsl");
+		s_RenderData->TextureShader = Shader::Create(TextureShaderPath);
 		s_RenderData->TextureShader->Bind();
 		s_RenderData->TextureShader->SetInt("u_Texture", 0);
 
 		// Cube shader /////////////////////////////////////////////////////
 		s_RenderData->CubeVertexArray = VertexArray::Create();
-		float* cubeVertices = CreateCubeVertexArray(arraySize);
-
-		VertexBuffer* cubeVertexBuffer = VertexBuffer::Create(arraySize, cubeVertices);
+		VertexBuffer* cubeVertexBuffer = VertexBuffer::Create(sizeof(cubeWithNormalsVertexArray), cubeWithNormalsVertexArray);
 		cubeVertexBuffer->SetLayout({
-			{ ShaderDataType::Float3, "a_Position" }
+			{ ShaderDataType::Float3, "a_Position" },
+			{ ShaderDataType::Float3, "a_Normal" }
 		});
 		s_RenderData->CubeVertexArray->AddVertexBuffer(cubeVertexBuffer);
 
-		float* normalsVertices = CreateNormalsVertexArray(arraySize);
-		VertexBuffer* normalsVertexBuffer = VertexBuffer::Create(arraySize, normalsVertices);
-		normalsVertexBuffer->SetLayout({
-			{ ShaderDataType::Float3, "a_Normal" }
-		});
-		s_RenderData->CubeVertexArray->AddVertexBuffer(normalsVertexBuffer);
-
-		unsigned int* cubeIndices = CreateCubeIndexArray(arraySize);
-		IndexBuffer* cubeIndexBuffer = IndexBuffer::Create(arraySize / sizeof(uint32_t), cubeIndices);
-		s_RenderData->CubeVertexArray->SetIndexBuffer(cubeIndexBuffer);
-
-		s_RenderData->CubeShader = Shader::Create("assets/shaders/Cube.glsl");
+		s_RenderData->CubeShader = Shader::Create(CubeShaderPath);
 		s_RenderData->CubeShader->Bind();
 
 		// Lighting shader /////////////////////////////////////////////////
 		s_RenderData->LightSourceVertexArray = VertexArray::Create();
-		float* lightSourceVertices = CreateCubeVertexArray(arraySize);
 		
-		VertexBuffer* lightSourceVertexBuffer = VertexBuffer::Create(arraySize, lightSourceVertices);
+		VertexBuffer* lightSourceVertexBuffer = VertexBuffer::Create(sizeof(cubeVertexArray), cubeVertexArray);
 		lightSourceVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" }
 		});
 		s_RenderData->LightSourceVertexArray->AddVertexBuffer(lightSourceVertexBuffer);
-		
-		unsigned int* lightSourceIndices = CreateCubeIndexArray(arraySize);
-		IndexBuffer* lightSourceIndexBuffer = IndexBuffer::Create(arraySize / sizeof(uint32_t), lightSourceIndices);
-		s_RenderData->LightSourceVertexArray->SetIndexBuffer(lightSourceIndexBuffer);
 
-		s_RenderData->LightSourceShader = Shader::Create("assets/shaders/LightSource.glsl");
+		s_RenderData->LightSourceShader = Shader::Create(LightSourceShaderPath);
 		s_RenderData->LightSourceShader->Bind();
 	}
 

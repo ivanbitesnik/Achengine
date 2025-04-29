@@ -22,6 +22,6 @@ namespace Achengine
 	private:
 		uint32_t m_RendererID;
 		std::vector<VertexBuffer*> m_VertexBuffers;
-		IndexBuffer* m_IndexBuffer;
+		IndexBuffer* m_IndexBuffer = nullptr;
 	};
 }

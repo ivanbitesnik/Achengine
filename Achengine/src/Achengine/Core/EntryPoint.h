@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef ACHENGINE_PLATFORM_WINDOWS
-
 extern Achengine::Application* Achengine::CreateApplication();
 
 	int main(int argc, char** argv)
@@ -14,5 +12,3 @@ extern Achengine::Application* Achengine::CreateApplication();
 		app->Run();
 		delete app;
 	}
-
-#endif

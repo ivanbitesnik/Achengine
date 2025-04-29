@@ -34,78 +34,110 @@ namespace Achengine
 		inline static std::shared_ptr<RendererAPI::API> GetAPI() { return RendererAPI::GetAPI(); }
 	};
 
-    static float* CreateQuadVertexArray(int& arraySize)
-    {
-        float vertexArray[] = {
-            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f
-        };
+#ifdef ACHENGINE_PLATFORM_LINUX
+	static std::string TextureShaderPath = "/home/acheto/Desktop/engine/Achengine/Sandbox/assets/shaders/Texture.glsl";
+	static std::string CubeShaderPath = "/home/acheto/Desktop/engine/Achengine/Sandbox/assets/shaders/Cube.glsl";
+	static std::string LightSourceShaderPath = "/home/acheto/Desktop/engine/Achengine/Sandbox/assets/shaders/LightSource.glsl";
+#else
+	static std::string TextureShaderPath = "assets/shaders/Texture.glsl";
+	static std::string CubeShaderPath = "assets/shaders/Cube.glsl";
+	static std::string LightSourceShaderPath = "assets/shaders/LightSource.glsl";
+#endif
 
-        arraySize = sizeof(vertexArray);
+    static float quadVertexArray[5 * 4] = {
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f
+    };
 
-        return vertexArray;
-    }
+    static unsigned int quadIndexArray[] = { 0, 1, 2, 2, 3, 0 };
 
-    static unsigned int* CreateQuadIndexArray(int& arraySize)
-    {
-        unsigned int indexArray[] = { 0, 1, 2, 2, 3, 0 };
+    static float cubeVertexArray[6 * 3 * 6] = {
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        arraySize = sizeof(indexArray);
+        -0.5f, -0.5f,  0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
 
-        return indexArray;
-    }
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
 
-    static float* CreateCubeVertexArray(int& arraySize)
-    {
-        float vertexArray[] = {
-            -1.0f,  1.0f,  1.0f,   // Top left (back face)
-             1.0f,  1.0f,  1.0f,   // Top right (back face)
-            -1.0f, -1.0f,  1.0f,   // Bottom left (back face)
-             1.0f, -1.0f,  1.0f,   // Bottom right (back face)
-            -1.0f,  1.0f, -1.0f,   // Top left (front face)
-             1.0f,  1.0f, -1.0f,   // Top right (front face)
-            -1.0f, -1.0f, -1.0f,   // Bottom left (front face)
-             1.0f, -1.0f, -1.0f    // Bottom right (front face)
-        };
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
 
-        arraySize = sizeof(vertexArray);
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        return vertexArray;
-    }
+        -0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f
+    };
 
-    static float* CreateNormalsVertexArray(int& arraySize)
-    {
-        float vertexArray[] = {
-            -1.0f,  1.0f,  1.0f,
-             1.0f,  1.0f,  1.0f,
-            -1.0f,  1.0f, -1.0f,
-             1.0f,  1.0f, -1.0f,
-            -1.0f, -1.0f,  1.0f,
-             1.0f, -1.0f,  1.0f,
-            -1.0f, -1.0f, -1.0f,
-             1.0f, -1.0f, -1.0f
-        };
+    static float cubeWithNormalsVertexArray[6 * 6 * 6] = {
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
 
-        arraySize = sizeof(vertexArray);
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-        return vertexArray;
-    }
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-    static unsigned int* CreateCubeIndexArray(int& arraySize)
-    {
-        unsigned int indexArray[] = {
-            0, 2, 3, 0, 1, 3,   // Back face
-            3, 7, 6, 3, 2, 6,   // Bottom face
-            6, 7, 5, 6, 4, 5,   // Front face
-            5, 7, 3, 5, 1, 3,   // Right face
-            0, 2, 6, 0, 4, 6,   // Left face
-            0, 4, 5, 0, 1, 5    // Top face
-        };
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-        arraySize = sizeof(indexArray);
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-        return indexArray;
-    }
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+    };
 }

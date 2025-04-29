@@ -1,40 +1,40 @@
 #include "Achenginepch.h"
-#include "WindowsInput.h"
+#include "LinuxInput.h"
 
 #include "Achengine/Core/Application.h"
 #include <GLFW/glfw3.h>
 
 namespace Achengine
 {
-#ifdef ACHENGINE_PLATFORM_WINDOWS
-	Input* Input::s_Instance = new WindowsInput();
+#ifdef ACHENGINE_PLATFORM_LINUX
+	Input* Input::s_Instance = new LinuxInput();
 #endif
 
-	bool WindowsInput::IsKeyPressedImpl(int keycode)
+	bool LinuxInput::IsKeyPressedImpl(int keycode)
 	{
 		GLFWwindow* window = static_cast<GLFWwindow*>(Application::Get()->GetWindow().GetNativeWindow());
 		int state = glfwGetKey(window, keycode);
 		return (state == GLFW_PRESS) || (state == GLFW_REPEAT);
 	}
 
-	bool WindowsInput::IsMouseButtonPressedImpl(int button)
+	bool LinuxInput::IsMouseButtonPressedImpl(int button)
 	{
 		GLFWwindow* window = static_cast<GLFWwindow*>(Application::Get()->GetWindow().GetNativeWindow());
 		int state = glfwGetMouseButton(window, button);
 		return state == GLFW_PRESS;
 	}
 
-	float WindowsInput::GetMouseXImpl()
+	float LinuxInput::GetMouseXImpl()
 	{
 		return GetMousePositionImpl().first;
 	}
 
-	float WindowsInput::GetMouseYImpl()
+	float LinuxInput::GetMouseYImpl()
 	{
 		return GetMousePositionImpl().second;
 	}
 
-	std::pair<float, float> WindowsInput::GetMousePositionImpl()
+	std::pair<float, float> LinuxInput::GetMousePositionImpl()
 	{
 		GLFWwindow* window = static_cast<GLFWwindow*>(Application::Get()->GetWindow().GetNativeWindow());
 		double xPos, yPos;

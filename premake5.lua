@@ -80,6 +80,18 @@ project "Achengine"
 			"ACHENGINE_BUILD_DLL",
 			"GLFW_INCLUDE_NONE"
 		}
+	
+	filter "system:linux"
+		pic "on"
+		staticruntime "On"
+		systemversion "latest"
+
+		defines
+		{
+			"ACHENGINE_PLATFORM_LINUX",
+			"ACHENGINE_BUILD_DLL",
+			"GLFW_INCLUDE_NONE"
+		}
 
 	filter "configurations:Debug"
 		defines "ACHENGINE_DEBUG"
@@ -126,7 +138,10 @@ project "Sandbox"
 
 	links
 	{
-		"Achengine"
+		"Achengine",
+		"GLFW",
+		"Glad",
+		"ImGui"
 	}
 
 	filter "system:windows"
@@ -138,6 +153,16 @@ project "Sandbox"
 			"ACHENGINE_PLATFORM_WINDOWS",
 		}
 
+	filter "system:linux"
+		pic "on"
+		staticruntime "on"
+		systemversion "latest"
+
+		defines
+		{
+			"ACHENGINE_PLATFORM_LINUX"
+		}
+		
 	filter "configurations:Debug"
 		defines "ACHENGINE_DEBUG"
 		staticruntime "off"

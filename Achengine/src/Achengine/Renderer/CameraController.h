@@ -32,7 +32,7 @@ namespace Achengine
 		Camera* m_Camera;
 
 		glm::vec3 m_CameraPosition = { 0.0f, 0.0f, 0.0f };
-		float m_CameraTranslationSpeed = 5.0f;
+		float m_CameraTranslationSpeed = 20.0f;
 		float m_CameraRotationSpeed = 1.0f;
 	};
 }

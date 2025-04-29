@@ -22,7 +22,7 @@ namespace Achengine
 			case ShaderDataType::Bool:		return GL_BOOL;
 		}
 
-		ACHENGINE_CORE_ASSERT(false, "Unknow shader data type!");
+		ACHENGINE_CORE_ASSERT(false, "Unknown shader data type!");
 		return GL_NONE;
 	}
 
@@ -71,7 +71,7 @@ namespace Achengine
 
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
-
+	
 	void OpenGLVertexArray::SetIndexBuffer(IndexBuffer* indexBuffer)
 	{
 		glBindVertexArray(m_RendererID);

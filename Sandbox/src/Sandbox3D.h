@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Achengine.h"
-#include "Achengine/Renderer/EditorCameraController.h"
 
 class Sandbox3D : public Achengine::Layer
 {

@@ -1,5 +1,5 @@
 #include "Achenginepch.h"
-#include "WindowsWindow.h"
+#include "LinuxWindow.h"
 
 #include "Achengine/Events/ApplicationEvent.h"
 #include "Achengine/Events/KeyEvent.h"
@@ -15,24 +15,24 @@ namespace Achengine
 		ACHENGINE_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
 	}
 
-#ifdef ACHENGINE_PLATFORM_WINDOWS
+#ifdef ACHENGINE_PLATFORM_LINUX
 	Window* Window::Create(const WindowProps& props)
 	{
-		return new WindowsWindow(props);
+		return new LinuxWindow(props);
 	}
 #endif
 
-	WindowsWindow::WindowsWindow(const WindowProps& props)
+	LinuxWindow::LinuxWindow(const WindowProps& props)
 	{
 		Init(props);
 	}
 
-	WindowsWindow::~WindowsWindow()
+	LinuxWindow::~LinuxWindow()
 	{
 		ShutDown();
 	}
 
-	void WindowsWindow::Init(const WindowProps& props)
+	void LinuxWindow::Init(const WindowProps& props)
 	{
 		m_Data.Title = props.Title;
 		m_Data.Height = props.Height;
@@ -148,18 +148,18 @@ namespace Achengine
 		});
 	}
 
-	void WindowsWindow::ShutDown()
+	void LinuxWindow::ShutDown()
 	{
 		glfwDestroyWindow(m_Window);
 	}
 
-	void WindowsWindow::OnUpdate()
+	void LinuxWindow::OnUpdate()
 	{
 		glfwPollEvents();
 		m_Context->SwapBuffers();
 	}
 
-	void WindowsWindow::SetVSync(bool bEnabled)
+	void LinuxWindow::SetVSync(bool bEnabled)
 	{
 		if (bEnabled)
 		{
@@ -171,7 +171,7 @@ namespace Achengine
 		}
 	}
 
-	bool WindowsWindow::IsVSync() const
+	bool LinuxWindow::IsVSync() const
 	{
 		return m_Data.VSync;
 	}

@@ -2,6 +2,7 @@
 
 #include "OrthographicCamera.h"
 #include "Texture.h"
+#include "Renderer.h"
 
 namespace Achengine
 {

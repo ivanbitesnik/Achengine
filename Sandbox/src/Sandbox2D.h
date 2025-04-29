@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Achengine.h"
-#include "Achengine/Renderer/OrthographicCameraController.h"
 
 class Sandbox2D : public Achengine::Layer
 {

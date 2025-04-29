@@ -5,7 +5,7 @@
 #include "Achengine/Core/KeyCodes.h"
 #include "Achengine/Core/MouseButtonCodes.h"
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>

@@ -1,9 +1,7 @@
 #include "Sandbox3D.h"
-// --- Entry Point ------------------------
-#include "Achengine/Core/EntryPoint.h"
 // ----------------------------------------
 
-#include "ImGui/imgui.h"
+#include "imgui/imgui.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -25,7 +23,7 @@ Sandbox3D::~Sandbox3D()
 
 void Sandbox3D::OnAttach()
 {
-	m_Texture = Achengine::Texture2D::Create("assets/textures/Acheto.png");
+	m_Texture = Achengine::Texture2D::Create("/home/acheto/Desktop/engine/Achengine/Sandbox/assets/textures/Acheto.png");
 }
 
 void Sandbox3D::OnDetach()

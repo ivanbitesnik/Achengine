@@ -31,24 +31,18 @@ namespace Achengine
 			-0.75f,  0.75f, 0.0f, 0.0f, 1.0f
 		};
 
-		VertexBuffer* squareVertexBuffer;
-		squareVertexBuffer = VertexBuffer::Create(sizeof(squareVertices), squareVertices);
+		VertexBuffer* squareVertexBuffer = VertexBuffer::Create(sizeof(squareVertices), squareVertices);
 		squareVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
-			{ ShaderDataType::Float2, "a_TextCoord" }
-			});
+			{ ShaderDataType::Float2, "a_TexCoord" }
+		});
 		s_RenderData->QuadVertexArray->AddVertexBuffer(squareVertexBuffer);
-
-		unsigned int squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
-		IndexBuffer* squareIndexBuffer;
-		squareIndexBuffer = IndexBuffer::Create(sizeof(squareIndices) / sizeof(uint32_t), squareIndices);
-		s_RenderData->QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
 
 		s_RenderData->WhiteTexture = Texture2D::Create(1, 1);
 		uint32_t whiteTextureData = 0xffffffff;
 		s_RenderData->WhiteTexture->SetData(&whiteTextureData, sizeof(whiteTextureData));
 
-		s_RenderData->TextureShader = Shader::Create("assets/shaders/Texture.glsl");
+		s_RenderData->TextureShader = Shader::Create(TextureShaderPath);
 		s_RenderData->TextureShader->Bind();
 		s_RenderData->TextureShader->SetInt("u_Texture", 0);
 	}

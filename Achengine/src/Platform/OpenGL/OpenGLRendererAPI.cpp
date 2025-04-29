@@ -32,6 +32,16 @@ namespace Achengine
 
 	void OpenGLRendererAPI::DrawIndexed(const VertexArray* vertexArray)
 	{
-		glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+		if (vertexArray->GetIndexBuffer() != nullptr)
+		{
+			glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+		}
+		else
+		{
+			for (const VertexBuffer* vb : vertexArray->GetVertexBuffers())
+			{
+				glDrawArrays(GL_TRIANGLES, 0, vb->GetSize());
+			}
+		}
 	}
 }
