@@ -17,9 +17,18 @@ void main()
 #version 330 core
 out vec4 FragColor;
 
-uniform vec3 u_Color;
+struct Light
+{
+    vec3 color;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+uniform Light u_Light;
 
 void main()
 {
-    FragColor = vec4(u_Color, 1.0);
+    vec3 result = (u_Light.ambient + u_Light.diffuse + u_Light.specular) * u_Light.color;
+    FragColor = vec4(result, 1.0);
 }

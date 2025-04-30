@@ -190,7 +190,10 @@ namespace Achengine
 		transform = glm::rotate(transform, glm::radians(angle), rot);
 		transform = glm::scale(transform, { size.x, size.y, size.z });
 		s_RenderData->LightSourceShader->SetMat4("u_Transform", transform);
-		s_RenderData->LightSourceShader->SetFloat3("u_Color", lightSource.color);
+		s_RenderData->LightSourceShader->SetFloat3("u_Light.color", lightSource.color);
+		s_RenderData->LightSourceShader->SetFloat3("u_Light.ambient", lightSource.ambient);
+		s_RenderData->LightSourceShader->SetFloat3("u_Light.diffuse", lightSource.diffuse);
+		s_RenderData->LightSourceShader->SetFloat3("u_Light.specular", lightSource.specular);
 
 		s_RenderData->LightSourceVertexArray->Bind();
 		RenderCommand::DrawIndexed(s_RenderData->LightSourceVertexArray);
