@@ -179,7 +179,6 @@ namespace Achengine
 	void Renderer::DrawLight(const LightSource lightSource, const glm::vec3& size, const float angle, const glm::vec3& rot)
 	{
 		s_RenderData->CubeShader->Bind();
-		s_RenderData->CubeShader->SetFloat3("u_Light.color", lightSource.color);
 		s_RenderData->CubeShader->SetFloat3("u_Light.position", lightSource.position);
 		s_RenderData->CubeShader->SetFloat3("u_Light.ambient", lightSource.ambient);
 		s_RenderData->CubeShader->SetFloat3("u_Light.diffuse", lightSource.diffuse);
