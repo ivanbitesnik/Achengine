@@ -157,7 +157,7 @@ namespace Achengine
 		RenderCommand::DrawIndexed(s_RenderData->QuadVertexArray);
 	}
 
-	void Renderer::DrawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec3& color, const float angle, const glm::vec3& rot)
+	void Renderer::DrawCube(const glm::vec3& position, const glm::vec3& size, const MeshMaterial material, const float angle, const glm::vec3& rot)
 	{
 		s_RenderData->CubeShader->Bind();
 
@@ -165,25 +165,33 @@ namespace Achengine
 		transform = glm::rotate(transform, glm::radians(angle), rot);
 		transform = glm::scale(transform, { size.x, size.y, size.z });
 		s_RenderData->CubeShader->SetMat4("u_Transform", transform);
-		s_RenderData->CubeShader->SetFloat3("u_ObjectColor", color);
-		s_RenderData->CubeShader->SetFloat3("u_LightColor", { 1.0f, 1.0f, 1.0f });
 		s_RenderData->CubeShader->SetFloat3("u_ViewPosition", s_RenderData->camera->GetPosition());
+		s_RenderData->CubeShader->SetFloat3("u_Material.color", material.color);
+		s_RenderData->CubeShader->SetFloat3("u_Material.ambient", material.ambient);
+		s_RenderData->CubeShader->SetFloat3("u_Material.diffuse", material.diffuse);
+		s_RenderData->CubeShader->SetFloat3("u_Material.specular", material.specular);
+		s_RenderData->CubeShader->SetFloat("u_Material.shininess", material.shininess);
 
 		s_RenderData->CubeVertexArray->Bind();
 		RenderCommand::DrawIndexed(s_RenderData->CubeVertexArray);
 	}
 
-	void Renderer::DrawLight(const glm::vec3& position, const glm::vec3& size, const float angle, const glm::vec3& rot)
+	void Renderer::DrawLight(const LightSource lightSource, const glm::vec3& size, const float angle, const glm::vec3& rot)
 	{
 		s_RenderData->CubeShader->Bind();
-		s_RenderData->CubeShader->SetFloat3("u_LightPosition", position);
+		s_RenderData->CubeShader->SetFloat3("u_Light.color", lightSource.color);
+		s_RenderData->CubeShader->SetFloat3("u_Light.position", lightSource.position);
+		s_RenderData->CubeShader->SetFloat3("u_Light.ambient", lightSource.ambient);
+		s_RenderData->CubeShader->SetFloat3("u_Light.diffuse", lightSource.diffuse);
+		s_RenderData->CubeShader->SetFloat3("u_Light.specular", lightSource.specular);
 
 		s_RenderData->LightSourceShader->Bind();
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), lightSource.position);
 		transform = glm::rotate(transform, glm::radians(angle), rot);
 		transform = glm::scale(transform, { size.x, size.y, size.z });
 		s_RenderData->LightSourceShader->SetMat4("u_Transform", transform);
+		s_RenderData->LightSourceShader->SetFloat3("u_Color", lightSource.color);
 
 		s_RenderData->LightSourceVertexArray->Bind();
 		RenderCommand::DrawIndexed(s_RenderData->LightSourceVertexArray);
