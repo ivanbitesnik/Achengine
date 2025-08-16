@@ -57,7 +57,8 @@ namespace Achengine
 		VertexBuffer* cubeVertexBuffer = VertexBuffer::Create(sizeof(cubeWithNormalsVertexArray), cubeWithNormalsVertexArray);
 		cubeVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
-			{ ShaderDataType::Float3, "a_Normal" }
+			{ ShaderDataType::Float3, "a_Normal" },
+			{ ShaderDataType::Float2, "a_TexCoords"}
 		});
 		s_RenderData->CubeVertexArray->AddVertexBuffer(cubeVertexBuffer);
 
@@ -172,6 +173,25 @@ namespace Achengine
 		s_RenderData->CubeShader->SetFloat3("u_Material.specular", material.specular);
 		s_RenderData->CubeShader->SetFloat("u_Material.shininess", material.shininess);
 
+		s_RenderData->CubeVertexArray->Bind();
+		RenderCommand::DrawIndexed(s_RenderData->CubeVertexArray);
+	}
+
+	void Renderer::DrawCube(const glm::vec3& position, const glm::vec3& size, const Texture* texture, const Texture* specularMap, const float angle, const glm::vec3& rot)
+	{
+		s_RenderData->CubeShader->Bind();
+		s_RenderData->CubeShader->SetInt("u_Material.diffuse", 0);
+		s_RenderData->CubeShader->SetInt("u_Material.specular", 1);
+		s_RenderData->CubeShader->SetFloat("u_Material.shininess", 256.0f);
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+		transform = glm::rotate(transform, glm::radians(angle), rot);
+		transform = glm::scale(transform, { size.x, size.y, size.z });
+		s_RenderData->CubeShader->SetMat4("u_Transform", transform);
+		s_RenderData->CubeShader->SetFloat3("u_ViewPosition", s_RenderData->camera->GetPosition());
+
+		texture->Bind();
+		texture->BindSpecularMap(specularMap);
 		s_RenderData->CubeVertexArray->Bind();
 		RenderCommand::DrawIndexed(s_RenderData->CubeVertexArray);
 	}

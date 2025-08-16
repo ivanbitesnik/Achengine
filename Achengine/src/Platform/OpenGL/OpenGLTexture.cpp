@@ -76,4 +76,11 @@ namespace Achengine
 	{
 		glBindTextureUnit(slot, m_RendererID);
 	}
+
+	void OpenGLTexture2D::BindSpecularMap(const Texture* specularMap) const
+	{
+		glActiveTexture(GL_TEXTURE1);
+		OpenGLTexture2D* spec = (OpenGLTexture2D*)specularMap;
+		glBindTexture(GL_TEXTURE_2D, spec->m_RendererID);
+	}
 }

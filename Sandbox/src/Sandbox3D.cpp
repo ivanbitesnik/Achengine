@@ -23,12 +23,19 @@ Sandbox3D::~Sandbox3D()
 
 void Sandbox3D::OnAttach()
 {
-	m_Texture = Achengine::Texture2D::Create("/home/acheto/Desktop/engine/Achengine/Sandbox/assets/textures/Acheto.png");
+	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("Acheto", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/Acheto.png")));
+	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("Box", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box.png")));
+	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("BoxSpecular", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box_specular.png")));
 }
 
 void Sandbox3D::OnDetach()
 {
-	delete m_Texture;
+	for (std::pair<std::string, Achengine::Texture*> texture : m_Textures)
+	{
+		delete texture.second;
+	}
+
+	m_Textures.clear();
 }
 
 void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
@@ -41,22 +48,29 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	Achengine::RenderCommand::Clear();
 
 	pos = glm::mod(pos, 360.0f);
-	pos += 2.0f * timestep;
-	const float x = cos(pos) * 15.0f;
-	const float y = sin(pos) * 15.0f;
-	
+	pos += 1.0f * timestep;
+	const float x = cos(pos) * 30.0f;
+	const float y = sin(pos) * 30.0f;
+	angle = glm::mod(angle, 360.0f);
+	angle += 30.0f * timestep;
+
 	lightColorRate = glm::mod(lightColorRate, 360.0f);
 	lightColorRate += 0.5f * timestep;
 	const glm::vec3 lightColor = {sin(lightColorRate * 2.0f), sin(lightColorRate * 0.7f), sin(lightColorRate * 1.3f)};
 	const glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f);
 	const glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
-	const Achengine::LightSource lightSource = Achengine::LightSource(ToTransform({ x, y, -4.0f}), lightColor, ambientColor, diffuseColor, {0.5f, 0.5f, 0.5f});
+	const glm::vec3 specular({0.5f, 0.5f, 0.5f});
+	const Achengine::LightSource lightSource = Achengine::LightSource(ToTransform({x, y, 60.0f}));
 	
 	Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
-	Achengine::Renderer::DrawLight(lightSource, { 2.0f, 2.0f, 2.0f });
+	Achengine::Renderer::DrawLight(lightSource, { 5.0f, 5.0f, 5.0f });
 	Achengine::Renderer::DrawQuad(ToTransform({ 0.0f, 0.0f, -5.0f }), { 50.0f, 50.0f }, { 0.1f, 0.1f, 0.1f, 1.0f }, 90.0f, { 1.0f, 0.0f, 0.0f });
-	const Achengine::MeshMaterial emeraldMaterial = Achengine::MeshMaterial({ 0.13f, 1.0f, 0.17f }, {0.0215f, 0.1745f, 0.0215f}, {0.07568f, 0.61424f, 0.07568f}, {0.633f, 0.727811f, 0.633f}, 0.6f);
-	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, -2.5f }), { 5.0f, 5.0f, 5.0f }, emeraldMaterial);
+	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, 10.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 0.0f, 1.0f}));
+	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, 100.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 0.0f, 1.0f}));
+	Achengine::Renderer::DrawCube(ToTransform({ 50.0f, 0.0f, 60.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), -angle, ToTransform({1.0f, 0.0f, 0.0f}));
+	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 50.0f, 60.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 1.0f, 0.0f}));
+	Achengine::Renderer::DrawCube(ToTransform({ -50.0f, 0.0f, 60.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), -angle, ToTransform({1.0f, 0.0f, 0.0f}));
+	Achengine::Renderer::DrawCube(ToTransform({ 0.0f, -50.0f, 60.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 1.0f, 0.0f}));
 	Achengine::Renderer::EndScene();
 }
 

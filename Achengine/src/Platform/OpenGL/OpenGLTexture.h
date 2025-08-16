@@ -19,6 +19,7 @@ namespace Achengine
 		virtual void SetData(void* data, uint32_t size) override;
 
 		virtual void Bind(uint32_t slot = 0) const override;
+		virtual void BindSpecularMap(const Texture* specularMap) const override;
 
 	private:
 		uint32_t m_Width, m_Height;
