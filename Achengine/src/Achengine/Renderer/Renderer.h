@@ -1,39 +1,28 @@
 #pragma once
 
+#include "Achengine.h"
 #include "Camera.h"
 #include "RenderCommand.h"
 #include "Shader.h"
 #include "Texture.h"
 
-class Actor;
-
 namespace Achengine
 {
-    struct MeshMaterial
-    {
-        public:
-            MeshMaterial(const glm::vec3& color, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular, const float shininess) :
-                color(color), ambient(ambient), diffuse(diffuse), specular(specular), shininess(shininess) {}
-            glm::vec3 color = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 ambient = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 diffuse = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 specular = glm::vec3(0.5f, 0.5f, 0.5f);
-            float shininess = 32.0f;
-    };
+    class AActor;
 
-    struct LightSource
-    {
-        public:
-            LightSource(const glm::vec3& position) : position(position) {}
-            LightSource(const glm::vec3& position, const glm::vec3& color, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular) :
-                position(position), color(color), ambient(ambient), diffuse(diffuse), specular(specular) {}
-            glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
-            glm::vec3 ambient = glm::vec3(0.5f, 0.5f, 0.5f);
-            glm::vec3 diffuse = glm::vec3(0.5f, 0.5f, 0.5f);
-            glm::vec3 specular = glm::vec3(0.5f, 0.5f, 0.5f);
-    };
-
+    struct RendererStorage
+	{
+		glm::vec3 CameraPosition;
+		glm::mat4 ViewProjectionMatrix;
+		Texture2D* WhiteTexture;
+		VertexArray* QuadVertexArray;
+		VertexArray* CubeVertexArray;
+		VertexArray* LightSourceVertexArray;
+		Shader* TextureShader;
+		Shader* LightSourceShader;
+		Shader* CubeShader;
+	};
+    
 	class Renderer
 	{
 	public:
@@ -52,10 +41,7 @@ namespace Achengine
 		static void DrawQuad(const glm::vec2& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 		static void DrawQuad(const glm::vec3& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 
-        static void DrawCube(const glm::vec3& position, const glm::vec3& size, const MeshMaterial material, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f));
-        static void DrawCube(const glm::vec3& position, const glm::vec3& size, const Texture* texture, const Texture* specularMap = nullptr, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f));
-
-        static void DrawLight(const LightSource lightSource, const glm::vec3& size, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f));
+        static void DrawActor(AActor* ActorToDraw);
 
 		inline static std::shared_ptr<RendererAPI::API> GetAPI() { return RendererAPI::GetAPI(); }
 	};

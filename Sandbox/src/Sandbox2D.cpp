@@ -1,6 +1,4 @@
 #include "Sandbox2D.h"
-// --- Entry Point ------------------------
-//#include "Achengine/Core/EntryPoint.h"
 // ----------------------------------------
 
 #include "imgui/imgui.h"

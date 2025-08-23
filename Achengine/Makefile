@@ -99,6 +99,9 @@ endif
 
 OBJECTS := \
 	$(OBJDIR)/Achenginepch.o \
+	$(OBJDIR)/Actor.o \
+	$(OBJDIR)/LightMesh.o \
+	$(OBJDIR)/StaticMesh.o \
 	$(OBJDIR)/Application.o \
 	$(OBJDIR)/Layer.o \
 	$(OBJDIR)/LayerStack.o \
@@ -188,6 +191,15 @@ $(OBJECTS): | $(OBJDIR)
 endif
 
 $(OBJDIR)/Achenginepch.o: src/Achengine/Achenginepch.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/Actor.o: src/Achengine/Actor/Actor.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/LightMesh.o: src/Achengine/Actor/LightMesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/StaticMesh.o: src/Achengine/Actor/StaticMesh.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Application.o: src/Achengine/Core/Application.cpp

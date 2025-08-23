@@ -26,7 +26,8 @@
 
 // --- Renderer ---------------------------
 #include "Achengine/Renderer/Buffer.h"
-#include "Achengine/Renderer/OrthographicCamera.h"
+#include "Achengine/Renderer/Camera.h"
+#include "Achengine/Renderer/EditorCamera.h"
 #include "Achengine/Renderer/RenderCommand.h"
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Renderer/Renderer2D.h"
@@ -34,3 +35,7 @@
 #include "Achengine/Renderer/Texture.h"
 #include "Achengine/Renderer/VertexArray.h"
 // ----------------------------------------
+
+// ---- Actors ----------------------------
+#include "Achengine/Actor/WorldActorCache.h"
+#include "Achengine/Actor/LightMesh.h"

@@ -24,6 +24,8 @@ namespace Achengine
 
 		Renderer::Init();
 
+		WorldActorCache::s_Instance = new WorldActorCache();
+
 		m_ImGuiLayer = new ImGuiLayer;
 		PushOverlay(m_ImGuiLayer);
 	}
