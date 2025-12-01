@@ -102,6 +102,8 @@ OBJECTS := \
 	$(OBJDIR)/Actor.o \
 	$(OBJDIR)/LightMesh.o \
 	$(OBJDIR)/StaticMesh.o \
+	$(OBJDIR)/WaterMesh.o \
+	$(OBJDIR)/WorldActorCache.o \
 	$(OBJDIR)/Application.o \
 	$(OBJDIR)/Layer.o \
 	$(OBJDIR)/LayerStack.o \
@@ -200,6 +202,12 @@ $(OBJDIR)/LightMesh.o: src/Achengine/Actor/LightMesh.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/StaticMesh.o: src/Achengine/Actor/StaticMesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/WaterMesh.o: src/Achengine/Actor/WaterMesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/WorldActorCache.o: src/Achengine/Actor/WorldActorCache.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Application.o: src/Achengine/Core/Application.cpp

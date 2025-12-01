@@ -5,18 +5,13 @@
 #include "Achengine/Actor/Actor.h"
 #include "Achengine/Renderer/EditorCamera.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-
 namespace Achengine
 {
     void UStaticMesh::DrawMesh(RendererStorage* RenderData)
     {
         RenderData->CubeShader->Bind();
         glm::vec3 scale = GetOwner()->GetActorScale();
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), GetOwner()->GetActorLocation());
-		transform = glm::rotate(transform, glm::radians(GetOwner()->GetActorRotation().Angle), GetOwner()->GetActorRotation().RotationAxis);
-		transform = glm::scale(transform, { scale.x, scale.y, scale.z });
-		RenderData->CubeShader->SetMat4("u_Transform", transform);
+		RenderData->CubeShader->SetMat4("u_Transform", GetOwner()->GetActorTransform());
 		RenderData->CubeShader->SetFloat3("u_ViewPosition", RenderData->CameraPosition);
 
         if (FMeshMaterial* Material = GetMaterial())

@@ -44,6 +44,15 @@ void Sandbox3D::OnAttach()
 	Light->SetStaticMesh(new Achengine::ULightMesh());
 	Light->SetActorLocation(ToTransform({0.0f, 0.0f, 30.0f}));
 	Light->SetActorScale({5.0f, 5.0f, 5.0f});
+
+	Achengine::AActor* WaterActor = new Achengine::AActor();
+	Achengine::UWaterMesh* WaterMesh = new Achengine::UWaterMesh();
+	WaterMesh->SetTexture(m_Textures.at("Acheto"));
+	WaterMesh->AddSineFunction(new Achengine::FSineFunction());
+	WaterActor->SetStaticMesh(WaterMesh);
+	WaterActor->SetActorLocation(ToTransform({ 0.0f, 0.0f, 0.0f }));
+	WaterActor->SetActorRotation({1.0f, 0.0f, 0.0f}, 90.0f);
+	WaterActor->SetActorScale({ 100.0f, 100.0f, 100.0f});
 }
 
 void Sandbox3D::OnDetach()
@@ -62,7 +71,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	m_CameraController->OnUpdate(timestep);
 
 	// Render
-	Achengine::RenderCommand::SetClearColor({ 0.0f, 0.4f, 1.0f, 0.5f });
+	Achengine::RenderCommand::SetClearColor({ 0.0f, 0.4f, 0.8f, 0.3f });
 	Achengine::RenderCommand::Clear();
 
 	pos = glm::mod(pos, 360.0f);
@@ -84,7 +93,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	{
 		for (Achengine::AActor* Actor : Cache->GetActorCache())
 		{
-			Actor->SetActorRotation({0.0f, 1.0f, 0.0f}, angle);
+			//Actor->SetActorRotation({0.0f, 1.0f, 0.0f}, angle);
 			Achengine::Renderer::DrawActor(Actor);
 		}
 	}
@@ -93,7 +102,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	//
 	//Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
 	//Achengine::Renderer::DrawLight(lightSource, { 5.0f, 5.0f, 5.0f });
-	Achengine::Renderer::DrawQuad(ToTransform({ 0.0f, 0.0f, -5.0f }), { 50.0f, 50.0f }, { 0.1f, 0.1f, 0.1f, 1.0f }, 90.0f, { 1.0f, 0.0f, 0.0f });
+	//Achengine::Renderer::DrawQuad(ToTransform({ 0.0f, 0.0f, -5.0f }), { 50.0f, 50.0f }, { 0.1f, 0.1f, 0.1f, 1.0f }, 90.0f, { 1.0f, 0.0f, 0.0f });
 	//Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, 10.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 0.0f, 1.0f}));
 	//Achengine::Renderer::DrawCube(ToTransform({ 0.0f, 0.0f, 100.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), angle, ToTransform({0.0f, 0.0f, 1.0f}));
 	//Achengine::Renderer::DrawCube(ToTransform({ 50.0f, 0.0f, 60.0f }), { 20.0f, 20.0f, 20.0f }, m_Textures.at("Box"), m_Textures.at("BoxSpecular"), -angle, ToTransform({1.0f, 0.0f, 0.0f}));

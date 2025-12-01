@@ -16,17 +16,12 @@ namespace Achengine
     void ULightMesh::DrawMesh(RendererStorage* RenderData)
     {
         RenderData->CubeShader->Bind();
-		RenderData->CubeShader->SetFloat3("u_Light.position", GetOwner()->GetActorLocation());
 		RenderData->CubeShader->SetFloat3("u_Light.ambient", GetLightSource()->ambient);
 		RenderData->CubeShader->SetFloat3("u_Light.diffuse", GetLightSource()->diffuse);
 		RenderData->CubeShader->SetFloat3("u_Light.specular", GetLightSource()->specular);
 
 		RenderData->LightSourceShader->Bind();
-        glm::vec3 scale = GetOwner()->GetActorScale();
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), GetOwner()->GetActorLocation());
-		transform = glm::rotate(transform, glm::radians(GetOwner()->GetActorRotation().Angle), GetOwner()->GetActorRotation().RotationAxis);
-		transform = glm::scale(transform, { scale.x, scale.y, scale.z });
-		RenderData->LightSourceShader->SetMat4("u_Transform", transform);
+		RenderData->LightSourceShader->SetMat4("u_Transform", GetOwner()->GetActorTransform());
 		RenderData->LightSourceShader->SetFloat3("u_Light.color", GetLightSource()->color);
 		RenderData->LightSourceShader->SetFloat3("u_Light.ambient", GetLightSource()->ambient);
 		RenderData->LightSourceShader->SetFloat3("u_Light.diffuse", GetLightSource()->diffuse);

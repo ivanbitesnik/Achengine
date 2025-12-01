@@ -21,6 +21,7 @@ namespace Achengine
 		Shader* TextureShader;
 		Shader* LightSourceShader;
 		Shader* CubeShader;
+        Shader* BasicWaterShader;
 	};
     
 	class Renderer
@@ -50,10 +51,12 @@ namespace Achengine
 	static std::string TextureShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/Texture.glsl";
 	static std::string CubeShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/Cube.glsl";
 	static std::string LightSourceShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/LightSource.glsl";
+    static std::string BasicWaterShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/BasicWater.glsl";
 #else
 	static std::string TextureShaderPath = "assets/shaders/Texture.glsl";
 	static std::string CubeShaderPath = "assets/shaders/Cube.glsl";
 	static std::string LightSourceShaderPath = "assets/shaders/LightSource.glsl";
+    static std::string BasicWaterShaderPath = "assets/shaders/BasicWater.glsl";
 #endif
 
     static float quadVertexArray[5 * 4] = {

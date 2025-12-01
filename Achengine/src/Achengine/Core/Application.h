@@ -9,7 +9,6 @@
 #include "Events/Event.h"
 #include "Window.h"
 
-
 namespace Achengine
 {
 	class Application
@@ -31,6 +30,7 @@ namespace Achengine
 		inline Window& GetWindow() { return *m_Window; }
 
 		inline static Application* Get() { return s_Instance; }
+		static double GetTimeSeconds() { return s_Time; }
 	private:
 
 		bool OnWindowClose(WindowCloseEvent& e);
@@ -45,6 +45,7 @@ namespace Achengine
 		bool bMinimized = false;
 
 		float m_LastFrameTime = 0.0f;
+		static double s_Time;
 	private:
 		static Application* s_Instance;
 	};

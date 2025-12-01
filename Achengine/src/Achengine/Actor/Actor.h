@@ -49,6 +49,8 @@ namespace Achengine
 
             void SetActorScale(glm::vec3 NewScale) { ActorScale = NewScale; }
             glm::vec3 GetActorScale() const { return ActorScale; }
+
+            glm::mat4 GetActorTransform() const;
             
             void Draw(RendererStorage* RenderData);
         private:

@@ -11,6 +11,7 @@
 namespace Achengine
 {
 	Application* Application::s_Instance = nullptr;
+	double Application::s_Time = 0.0f;
 
 	Application::Application()
 	{
@@ -23,8 +24,6 @@ namespace Achengine
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
 		Renderer::Init();
-
-		WorldActorCache::s_Instance = new WorldActorCache();
 
 		m_ImGuiLayer = new ImGuiLayer;
 		PushOverlay(m_ImGuiLayer);
@@ -66,6 +65,7 @@ namespace Achengine
 			float time = (float)glfwGetTime();	// Platform::GetTime
 			Timestep timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
+			s_Time += timestep;
 
 			if (!bMinimized)
 			{

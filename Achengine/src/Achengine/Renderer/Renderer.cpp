@@ -22,12 +22,12 @@ namespace Achengine
 		// Texture shader /////////////////////////////////////////////////
 		s_RenderData->QuadVertexArray = VertexArray::Create();
 
-		VertexBuffer* squareVertexBuffer = VertexBuffer::Create(sizeof(quadVertexArray), quadVertexArray);
-		squareVertexBuffer->SetLayout({
+		VertexBuffer* quadVertexBuffer = VertexBuffer::Create(sizeof(quadVertexArray), quadVertexArray);
+		quadVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float2, "a_TexCoord" }
 		});
-		s_RenderData->QuadVertexArray->AddVertexBuffer(squareVertexBuffer);
+		s_RenderData->QuadVertexArray->AddVertexBuffer(quadVertexBuffer);
 
 		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(quadIndexArray) / sizeof(uint32_t), quadIndexArray);
 		s_RenderData->QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
@@ -39,6 +39,11 @@ namespace Achengine
 		s_RenderData->TextureShader = Shader::Create(TextureShaderPath);
 		s_RenderData->TextureShader->Bind();
 		s_RenderData->TextureShader->SetInt("u_Texture", 0);
+		
+		// Basic Water shader //////////////////////////////////////////////
+		s_RenderData->BasicWaterShader = Shader::Create(BasicWaterShaderPath);
+		s_RenderData->BasicWaterShader->Bind();
+		s_RenderData->BasicWaterShader->SetInt("u_Texture", 0);
 
 		// Cube shader /////////////////////////////////////////////////////
 		s_RenderData->CubeVertexArray = VertexArray::Create();
@@ -90,6 +95,9 @@ namespace Achengine
 
 		s_RenderData->LightSourceShader->Bind();
 		s_RenderData->LightSourceShader->SetMat4("u_ViewProjection", s_RenderData->ViewProjectionMatrix);
+
+		s_RenderData->BasicWaterShader->Bind();
+		s_RenderData->BasicWaterShader->SetMat4("u_ViewProjection", s_RenderData->ViewProjectionMatrix);
 	}
 
 	void Renderer::EndScene()
