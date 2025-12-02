@@ -22,20 +22,24 @@ namespace Achengine
     class UStaticMesh : public UActorComponent
     {
         public:
-            UStaticMesh() {}
+            UStaticMesh();
+            void Initialize();
 
-            void SetMaterial(FMeshMaterial* NewMaterial) { s_Material = NewMaterial; }
-            FMeshMaterial* GetMaterial() const { return s_Material; }
+            void SetMaterial(FMeshMaterial* NewMaterial) { m_Material = NewMaterial; }
+            FMeshMaterial* GetMaterial() const { return m_Material; }
 
-            void SetTexture(Texture* NewTexture) { s_Texture = NewTexture; }
-            Texture* GetTexture() const { return s_Texture; }
-            void SetSpecular(Texture* NewSpecular) { s_Specular = NewSpecular; }
-            Texture* GetSpecular() const { return s_Specular; }
+            void SetTexture(Texture* NewTexture) { m_Texture = NewTexture; }
+            Texture* GetTexture() const { return m_Texture; }
+            void SetSpecular(Texture* NewSpecular) { m_Specular = NewSpecular; }
+            Texture* GetSpecular() const { return m_Specular; }
 
             virtual void DrawMesh(RendererStorage* RenderData);
+        protected:
+            std::string m_ShaderPath;
+            std::string m_ShaderName;
         private:
-            FMeshMaterial* s_Material = nullptr;
-            Texture* s_Texture = nullptr;
-            Texture* s_Specular = nullptr;
+            FMeshMaterial* m_Material = nullptr;
+            Texture* m_Texture = nullptr;
+            Texture* m_Specular = nullptr;
     };
 }

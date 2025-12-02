@@ -108,6 +108,7 @@ OBJECTS := \
 	$(OBJDIR)/Layer.o \
 	$(OBJDIR)/LayerStack.o \
 	$(OBJDIR)/Log.o \
+	$(OBJDIR)/Utilities.o \
 	$(OBJDIR)/ImGuiBuild.o \
 	$(OBJDIR)/ImGuiLayer.o \
 	$(OBJDIR)/Buffer.o \
@@ -220,6 +221,9 @@ $(OBJDIR)/LayerStack.o: src/Achengine/Core/LayerStack.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Log.o: src/Achengine/Core/Log.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/Utilities.o: src/Achengine/Core/Utilities.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/ImGuiBuild.o: src/Achengine/ImGui/ImGuiBuild.cpp

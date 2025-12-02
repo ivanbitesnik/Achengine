@@ -6,39 +6,41 @@
 
 namespace Achengine
 {
-	UWaterMesh::UWaterMesh()
-	{
-		m_SineFunction = new FSineFunction();
-	}
-
-    void UWaterMesh::AddSineFunction(FSineFunction* NewSineFunction)
+    UWaterMesh::UWaterMesh()
     {
-        if (m_SineFunction)
-        {
-            m_SineFunction->amplitude += NewSineFunction->amplitude;
-            m_SineFunction->frequency += NewSineFunction->frequency;
-            m_SineFunction->phase += NewSineFunction->phase;
-        }
-        else
-        {
-            m_SineFunction = NewSineFunction;
-        }
+#ifdef ACHENGINE_PLATFORM_LINUX
+        m_ShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/BasicWater.glsl";
+#else
+        m_ShaderPath = "assets/shaders/BasicWater.glsl";
+#endif
+        m_ShaderName = "BasicWaterShader";
+
+        Initialize();
     }
 
     void UWaterMesh::DrawMesh(RendererStorage* RenderData)
     {
-        RenderData->BasicWaterShader->Bind();
-        RenderData->BasicWaterShader->SetFloat4("u_Color", {1.0f, 0.8f, 0.2f, 1.0f});
-        RenderData->WhiteTexture->Bind();
+		Renderer::SetShaderUniform(m_ShaderName, "u_Transform", GetOwner()->GetActorTransform());
 
-		RenderData->BasicWaterShader->Bind();
-		RenderData->BasicWaterShader->SetMat4("u_Transform", GetOwner()->GetActorTransform());
-		RenderData->BasicWaterShader->SetFloat("u_Amplitude", GetSineFunction()->amplitude);
-		RenderData->BasicWaterShader->SetFloat("u_Frequency", GetSineFunction()->frequency);
-		RenderData->BasicWaterShader->SetFloat("u_Phase", GetSineFunction()->phase);
-        RenderData->BasicWaterShader->SetFloat("u_Time", Application::GetTimeSeconds());
+        constexpr int numWaves = 8;
+        Renderer::SetShaderUniform(m_ShaderName, "u_NumWaves", numWaves);
+        Renderer::SetShaderUniform(m_ShaderName, "u_envMap", 0);
+		for (int i = 0; i < numWaves; ++i) 
+        {
+            float amplitude = 0.5f / (i + 1);
+            Renderer::SetShaderUniform(m_ShaderName, format("u_Amplitude[%d]", i), amplitude);
 
-		RenderData->QuadVertexArray->Bind();
-		RenderCommand::DrawIndexed(RenderData->QuadVertexArray);
+            float wavelength = 8 * M_PI / (i + 1);
+            Renderer::SetShaderUniform(m_ShaderName, format("u_Wavelength[%d]", i), wavelength);
+
+            float speed = 1.0f + 2*i;
+            Renderer::SetShaderUniform(m_ShaderName, format("u_Speed[%d]", i), speed);
+            
+            float angle = uniformRandomInRange(-M_PI/3, M_PI/3);
+            Renderer::SetShaderUniform(m_ShaderName, format("u_Direction[%d]", i), {cos(angle), sin(angle)});
+        }
+
+		RenderData->BasicWaterVertexArray->Bind();
+		RenderCommand::DrawIndexed(RenderData->BasicWaterVertexArray);
     }
 }

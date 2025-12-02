@@ -187,6 +187,11 @@ namespace Achengine
 		UploadUniformFloat(name, value);
 	}
 
+	void OpenGLShader::SetFloat2(const std::string& name, const glm::vec2 value)
+	{
+		UploadUniformFloat2(name, value);
+	}
+
 	void OpenGLShader::SetFloat3(const std::string& name, const glm::vec3 value)
 	{
 		UploadUniformFloat3(name, value);
@@ -200,6 +205,13 @@ namespace Achengine
 	void OpenGLShader::SetMat4(const std::string& name, const glm::mat4 value)
 	{
 		UploadUniformMat4(name, value);
+	}
+
+	bool OpenGLShader::HasUniform(const std::string& name)
+	{
+	    Bind();
+	    GLint uniform = glGetUniformLocation(m_RendererID, name.c_str());
+	    return uniform >= 0;
 	}
 
 	void OpenGLShader::UploadUniformInt(const std::string& name, const int value)

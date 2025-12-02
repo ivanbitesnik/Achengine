@@ -12,16 +12,12 @@ namespace Achengine
 
     struct RendererStorage
 	{
-		glm::vec3 CameraPosition;
-		glm::mat4 ViewProjectionMatrix;
 		Texture2D* WhiteTexture;
 		VertexArray* QuadVertexArray;
 		VertexArray* CubeVertexArray;
 		VertexArray* LightSourceVertexArray;
-		Shader* TextureShader;
-		Shader* LightSourceShader;
-		Shader* CubeShader;
-        Shader* BasicWaterShader;
+        VertexArray* BasicWaterVertexArray;
+        std::map<std::string, Shader*> Shaders;
 	};
     
 	class Renderer
@@ -30,15 +26,20 @@ namespace Achengine
 		static void Init();
 		static void Shutdown();
 
+        static void AddShader(const std::string& ShaderName, const std::string& ShaderPath);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, float value);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec2& value);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec3& value);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec4& value);
+        static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::mat4& value);
+
 		static void OnWindowResize(uint32_t width, uint32_t height);
 
 		static void BeginScene(Camera* camera);
 		static void EndScene();
 
-		static void Submit(const VertexArray* vertexArray, Shader* shader, const glm::mat4 transform = glm::mat4(1.0f));
 		// Primitives
-		static void DrawQuad(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f));
-		static void DrawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f));
 		static void DrawQuad(const glm::vec2& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 		static void DrawQuad(const glm::vec3& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 
@@ -49,14 +50,8 @@ namespace Achengine
 
 #ifdef ACHENGINE_PLATFORM_LINUX
 	static std::string TextureShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/Texture.glsl";
-	static std::string CubeShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/Cube.glsl";
-	static std::string LightSourceShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/LightSource.glsl";
-    static std::string BasicWaterShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/BasicWater.glsl";
 #else
 	static std::string TextureShaderPath = "assets/shaders/Texture.glsl";
-	static std::string CubeShaderPath = "assets/shaders/Cube.glsl";
-	static std::string LightSourceShaderPath = "assets/shaders/LightSource.glsl";
-    static std::string BasicWaterShaderPath = "assets/shaders/BasicWater.glsl";
 #endif
 
     static float quadVertexArray[5 * 4] = {
@@ -112,7 +107,52 @@ namespace Achengine
         -0.5f,  0.5f, -0.5f
     };
 
-    static float cubeWithNormalsVertexArray[8 * 6 * 6] = {
+    static float cubeWithNormalsVertexArray[6 * 6 * 6] = {
+        // positions          // normals
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f, 
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f, 
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f, 
+
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 
+        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 
+        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 
+
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+    };
+
+    static float texturedCubeWithNormalsVertexArray[8 * 6 * 6] = {
         // positions          // normals           // texture coords
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,

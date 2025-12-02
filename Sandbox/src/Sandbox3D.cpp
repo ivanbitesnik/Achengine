@@ -23,9 +23,9 @@ Sandbox3D::~Sandbox3D()
 
 void Sandbox3D::OnAttach()
 {
-	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("Acheto", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/Acheto.png")));
-	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("Box", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box.png")));
-	m_Textures.insert(std::pair<std::string, Achengine::Texture2D*>("BoxSpecular", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box_specular.png")));
+	m_Textures.insert({"Acheto", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/Acheto.png")});
+	m_Textures.insert({"Box", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box.png")});
+	m_Textures.insert({"BoxSpecular", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box_specular.png")});
 	
 	std::vector<glm::vec3> locations = {{0.0f, 10.0f, 0.0f}, {0.0f, 50.0f, 0.0f}, {20.0f, 30.0f, 0.0f}, {-20.0f, 30.0f, 0.0f}, {0.0f, 30.0f, 20.0f}, {0.0f, 30.0f, -20.0f}};
 	for (int i = 0; i < 6; i++)
@@ -47,12 +47,8 @@ void Sandbox3D::OnAttach()
 
 	Achengine::AActor* WaterActor = new Achengine::AActor();
 	Achengine::UWaterMesh* WaterMesh = new Achengine::UWaterMesh();
-	WaterMesh->SetTexture(m_Textures.at("Acheto"));
-	WaterMesh->AddSineFunction(new Achengine::FSineFunction());
 	WaterActor->SetStaticMesh(WaterMesh);
-	WaterActor->SetActorLocation(ToTransform({ 0.0f, 0.0f, 0.0f }));
-	WaterActor->SetActorRotation({1.0f, 0.0f, 0.0f}, 90.0f);
-	WaterActor->SetActorScale({ 100.0f, 100.0f, 100.0f});
+	WaterActor->SetActorScale(ToTransform({ 100.0f, 100.0f, 20.0f}));
 }
 
 void Sandbox3D::OnDetach()
@@ -71,7 +67,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	m_CameraController->OnUpdate(timestep);
 
 	// Render
-	Achengine::RenderCommand::SetClearColor({ 0.0f, 0.4f, 0.8f, 0.3f });
+	Achengine::RenderCommand::SetClearColor({ 0.4f, 0.4f, 0.8f, 0.3f });
 	Achengine::RenderCommand::Clear();
 
 	pos = glm::mod(pos, 360.0f);

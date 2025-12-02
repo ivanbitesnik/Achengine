@@ -8,6 +8,7 @@
 #include "Achengine/Core/Core.h"
 #include "Achengine/Core/Log.h"
 #include "Achengine/Core/Timestep.h"
+#include "Achengine/Core/Utilities.h"
 // ----------------------------------------
 
 // --- UI ---------------------------------
