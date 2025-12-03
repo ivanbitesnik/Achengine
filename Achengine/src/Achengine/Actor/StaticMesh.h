@@ -21,6 +21,8 @@ namespace Achengine
 
     class UStaticMesh : public UActorComponent
     {
+        // TODO: Remove dependency
+        friend class ULightMesh;
         public:
             UStaticMesh();
             void Initialize();
@@ -33,10 +35,9 @@ namespace Achengine
             void SetSpecular(Texture* NewSpecular) { m_Specular = NewSpecular; }
             Texture* GetSpecular() const { return m_Specular; }
 
-            virtual void DrawMesh(RendererStorage* RenderData);
+            virtual void DrawMesh();
         protected:
             std::string m_ShaderPath;
-            std::string m_ShaderName;
         private:
             FMeshMaterial* m_Material = nullptr;
             Texture* m_Texture = nullptr;

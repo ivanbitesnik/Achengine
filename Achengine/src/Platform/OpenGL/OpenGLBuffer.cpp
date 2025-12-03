@@ -10,7 +10,7 @@ namespace Achengine
 	// VertexBuffer ////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////
 
-	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size, float* vertices)
+	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size, const float* vertices)
 	{
 		glCreateBuffers(1, &m_RendererID);
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
@@ -38,7 +38,7 @@ namespace Achengine
 	// IndexBuffer /////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////
 
-	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t count, uint32_t* indices)
+	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t count, const uint32_t* indices)
 		: m_Count(count)
 	{
 		glCreateBuffers(1, &m_RendererID);

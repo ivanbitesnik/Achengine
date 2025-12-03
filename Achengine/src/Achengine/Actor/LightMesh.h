@@ -24,7 +24,7 @@ namespace Achengine
             void SetLightSource(FLightSource* NewLightSource) { m_LightSource = NewLightSource; }
             FLightSource* GetLightSource() const { return m_LightSource; }
 
-            virtual void DrawMesh(RendererStorage* RenderData) override;
+            virtual void DrawMesh() override;
         private:
             FLightSource* m_LightSource = nullptr;
     };

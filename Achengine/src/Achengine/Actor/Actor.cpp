@@ -35,11 +35,11 @@ namespace Achengine
         }
     }
 
-    void AActor::Draw(RendererStorage* RenderData)
+    void AActor::Draw()
     {
         if (UStaticMesh* StaticMesh = GetStaticMesh())
         {
-            StaticMesh->DrawMesh(RenderData);
+            StaticMesh->DrawMesh();
         }
     }
 

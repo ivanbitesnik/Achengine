@@ -20,52 +20,41 @@ namespace Achengine
 		s_RenderData = new RendererStorage;
 
 		// Texture shader /////////////////////////////////////////////////
-		s_RenderData->QuadVertexArray = VertexArray::Create();
-
-		VertexBuffer* quadVertexBuffer = VertexBuffer::Create(sizeof(quadVertexArray), quadVertexArray);
-		quadVertexBuffer->SetLayout({
+		BufferLayout QuadBufferLayout = {
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float2, "a_TexCoord" }
-		});
-		s_RenderData->QuadVertexArray->AddVertexBuffer(quadVertexBuffer);
-
+		};
+		VertexArray* QuadVertexArray = AddVertexArray("QuadVertexArray", quadVertexArray, QuadBufferLayout);
 		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(quadIndexArray) / sizeof(uint32_t), quadIndexArray);
-		s_RenderData->QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
+		QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
 
 		s_RenderData->WhiteTexture = Texture2D::Create(1, 1);
 		uint32_t whiteTextureData = 0xffffffff;
 		s_RenderData->WhiteTexture->SetData(&whiteTextureData, sizeof(whiteTextureData));
 
-		Renderer::AddShader("TextureShader", TextureShaderPath);
-		Renderer::SetShaderUniform("TextureShader", "u_Texture", 0);
+		Shader* TextureShader = Renderer::AddShader(TextureShaderPath);
+		Renderer::SetShaderUniform(TextureShader->GetName(), "u_Texture", 0);
 		
 		// Basic Water shader //////////////////////////////////////////////
-		s_RenderData->BasicWaterVertexArray = VertexArray::Create();
-		VertexBuffer* waterVertexBuffer = VertexBuffer::Create(sizeof(cubeWithNormalsVertexArray), cubeWithNormalsVertexArray);
-		waterVertexBuffer->SetLayout({
+		BufferLayout BasicWaterBufferLayout = {
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float3, "a_Normal" }
-		});
-		s_RenderData->BasicWaterVertexArray->AddVertexBuffer(waterVertexBuffer);
+		};
+		AddVertexArray("BasicWaterVertexArray", cubeWithNormalsVertexArray, BasicWaterBufferLayout);
 
 		// Cube shader /////////////////////////////////////////////////////
-		s_RenderData->CubeVertexArray = VertexArray::Create();
-		VertexBuffer* cubeVertexBuffer = VertexBuffer::Create(sizeof(texturedCubeWithNormalsVertexArray), texturedCubeWithNormalsVertexArray);
-		cubeVertexBuffer->SetLayout({
+		BufferLayout CubeBufferLayout = {
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float3, "a_Normal" },
 			{ ShaderDataType::Float2, "a_TexCoords"}
-		});
-		s_RenderData->CubeVertexArray->AddVertexBuffer(cubeVertexBuffer);
+		};
+		AddVertexArray("CubeVertexArray", texturedCubeWithNormalsVertexArray, CubeBufferLayout);
 
 		// Lighting shader /////////////////////////////////////////////////
-		s_RenderData->LightSourceVertexArray = VertexArray::Create();
-		
-		VertexBuffer* lightSourceVertexBuffer = VertexBuffer::Create(sizeof(cubeVertexArray), cubeVertexArray);
-		lightSourceVertexBuffer->SetLayout({
+		BufferLayout LightSourceBufferLayout = {
 			{ ShaderDataType::Float3, "a_Position" }
-		});
-		s_RenderData->LightSourceVertexArray->AddVertexBuffer(lightSourceVertexBuffer);
+		};
+		AddVertexArray("LightSourceVertexArray", cubeVertexArray, LightSourceBufferLayout);
 	}
 
 	void Renderer::Shutdown()
@@ -74,17 +63,41 @@ namespace Achengine
 		delete s_RenderData;
 	}
 
-	void Renderer::AddShader(const std::string& ShaderName, const std::string& ShaderPath)
+	Shader* Renderer::AddShader(const std::string& ShaderPath)
 	{
-		if (s_RenderData->Shaders.count(ShaderName))
+		const std::string& ShaderName = GetObjectNameFromFilePath(ShaderPath);
+		if (s_RenderData->GetShader(ShaderName))
 		{
-			ACHENGINE_CORE_WARN("Shader was already added! Shader name: {0}", ShaderName);
-			return;
+			//ACHENGINE_CORE_WARN("Shader was already added! Shader name: {0}", ShaderName);
+			return nullptr;
 		}
 		
 		Shader* NewShader = Shader::Create(ShaderPath);
-		s_RenderData->Shaders.insert({ShaderName, NewShader});
+		s_RenderData->Shaders.push_back(NewShader);
 		NewShader->Bind();
+		return NewShader;
+	}
+
+	template<unsigned int N>
+	VertexArray* Renderer::AddVertexArray(const std::string& VertexArrayName, const float (&VertexCoords)[N], const BufferLayout& BufferLayout)
+	{
+		VertexArray* NewVertexArray = VertexArray::Create();
+		VertexBuffer* VertexBuffer = VertexBuffer::Create(sizeof(VertexCoords), VertexCoords);
+		VertexBuffer->SetLayout(BufferLayout);
+		NewVertexArray->AddVertexBuffer(VertexBuffer);
+		
+		s_RenderData->VertexArrays.insert({VertexArrayName, NewVertexArray});
+		return NewVertexArray;
+	}
+
+	VertexArray* Renderer::GetVertexArray(const std::string& VertexArrayName)
+	{
+		if (s_RenderData->VertexArrays.count(VertexArrayName))
+		{
+			return s_RenderData->VertexArrays.at(VertexArrayName);
+		}
+
+		return nullptr;
 	}
 
 	void Renderer::OnWindowResize(uint32_t width, uint32_t height)
@@ -98,10 +111,10 @@ namespace Achengine
 		const glm::vec3& CameraPosition = Camera->GetPosition();
 		const glm::mat4& ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
 
-		for (auto& shader : s_RenderData->Shaders)
+		for (Shader* shader : s_RenderData->Shaders)
 		{
-			Renderer::SetShaderUniform(shader.first, "u_ViewProjection", ViewProjectionMatrix);
-			Renderer::SetShaderUniform(shader.first, "u_ViewPosition", CameraPosition);
+			Renderer::SetShaderUniform(shader->GetName(), "u_ViewProjection", ViewProjectionMatrix);
+			Renderer::SetShaderUniform(shader->GetName(), "u_ViewPosition", CameraPosition);
 		}
 	}
 
@@ -131,24 +144,26 @@ namespace Achengine
 		transform = glm::scale(transform, { size.x, size.y, 1.0f });
 		Renderer::SetShaderUniform("TextureShader", "u_Transform", transform);
 
-		s_RenderData->QuadVertexArray->Bind();
-		RenderCommand::DrawIndexed(s_RenderData->QuadVertexArray);
+		VertexArray* QuadVertexArray = GetVertexArray("QuadVertexArray");
+		QuadVertexArray->Bind();
+		RenderCommand::DrawIndexed(QuadVertexArray);
 	}
 
-	void Renderer::DrawActor(AActor* ActorToDraw)
+	void Renderer::DrawVertexArray(const std::string& VertexArrayName)
 	{
-		ActorToDraw->Draw(s_RenderData);
+		VertexArray* VertexArrayToDraw = GetVertexArray(VertexArrayName);
+		VertexArrayToDraw->Bind();
+		RenderCommand::DrawIndexed(VertexArrayToDraw);
 	}
 
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))
@@ -158,13 +173,12 @@ namespace Achengine
 	}
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, float value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))
@@ -174,13 +188,12 @@ namespace Achengine
 	}
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec2& value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))
@@ -190,13 +203,12 @@ namespace Achengine
 	}
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec3& value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))
@@ -206,13 +218,12 @@ namespace Achengine
 	}
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec4& value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))
@@ -222,13 +233,12 @@ namespace Achengine
 	}
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::mat4& value)
 	{
-		if (!s_RenderData->Shaders.count(ShaderName))
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		if (!shader)
 		{
 			ACHENGINE_CORE_WARN("Tried to set shader uniform to an invalid shader! Shader name: {0}, uniform name: {1}", ShaderName, UniformName);
 			return;
 		}
-
-		Shader* shader = s_RenderData->Shaders.at(ShaderName);
 
 		shader->Bind();
 		if (shader->HasUniform(UniformName))

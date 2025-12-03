@@ -19,7 +19,7 @@ namespace Achengine
 		}
 	}
 
-	VertexBuffer* VertexBuffer::Create(uint32_t size, float* vertices)
+	VertexBuffer* VertexBuffer::Create(uint32_t size, const float* vertices)
 	{
 		switch (*Renderer::GetAPI())
 		{
@@ -39,7 +39,7 @@ namespace Achengine
 		return nullptr;
 	}
 
-	IndexBuffer* IndexBuffer::Create(uint32_t count, uint32_t* indices)
+	IndexBuffer* IndexBuffer::Create(uint32_t count, const uint32_t* indices)
 	{
 		switch (*Renderer::GetAPI())
 		{

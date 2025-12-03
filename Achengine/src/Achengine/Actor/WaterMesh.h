@@ -9,6 +9,6 @@ namespace Achengine
         public:
             UWaterMesh();
 
-            virtual void DrawMesh(RendererStorage* RenderData) override;
+            virtual void DrawMesh() override;
     };
 }

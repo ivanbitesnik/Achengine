@@ -17,25 +17,29 @@ namespace Achengine
 #else
 		m_ShaderPath = "assets/shaders/LightSource.glsl";
 #endif
-		m_ShaderName = "LightSourceShader";
 
 		Initialize();
 	}
 
-    void ULightMesh::DrawMesh(RendererStorage* RenderData)
+    void ULightMesh::DrawMesh()
     {
-		// TODO: remove access of another shader name
-		Renderer::SetShaderUniform("StaticMeshShader", "u_Light.ambient", GetLightSource()->ambient);
-		Renderer::SetShaderUniform("StaticMeshShader", "u_Light.diffuse", GetLightSource()->diffuse);
-		Renderer::SetShaderUniform("StaticMeshShader", "u_Light.specular", GetLightSource()->specular);
+		// TODO: remove awful dep
+		UStaticMesh* temp = new UStaticMesh();
 
-		Renderer::SetShaderUniform(m_ShaderName, "u_Transform", GetOwner()->GetActorTransform());
-		Renderer::SetShaderUniform(m_ShaderName, "u_Light.color", GetLightSource()->color);
-		Renderer::SetShaderUniform(m_ShaderName, "u_Light.ambient", GetLightSource()->ambient);
-		Renderer::SetShaderUniform(m_ShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
-		Renderer::SetShaderUniform(m_ShaderName, "u_Light.specular", GetLightSource()->specular);
+		const std::string& StaticMeshShaderName = GetObjectNameFromFilePath(temp->m_ShaderPath);
+		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.ambient", GetLightSource()->ambient);
+		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
+		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.specular", GetLightSource()->specular);
+		delete temp;
+		
+		const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
+		Renderer::SetShaderUniform(ShaderName, "u_Transform", GetOwner()->GetActorTransform());
+		Renderer::SetShaderUniform(ShaderName, "u_Light.color", GetLightSource()->color);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.ambient", GetLightSource()->ambient);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.specular", GetLightSource()->specular);
 
-		RenderData->LightSourceVertexArray->Bind();
-		RenderCommand::DrawIndexed(RenderData->LightSourceVertexArray);
+		//TODO: Remove hardcoded string
+		Renderer::DrawVertexArray("LightSourceVertexArray");
     }
 }

@@ -52,7 +52,7 @@ namespace Achengine
 
             glm::mat4 GetActorTransform() const;
             
-            void Draw(RendererStorage* RenderData);
+            void Draw();
         private:
             std::vector<UActorComponent*> ActorComponents;
             glm::vec3 ActorLocation = {0.0f, 0.0f, 0.0f};

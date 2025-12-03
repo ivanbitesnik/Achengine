@@ -13,11 +13,21 @@ namespace Achengine
     struct RendererStorage
 	{
 		Texture2D* WhiteTexture;
-		VertexArray* QuadVertexArray;
-		VertexArray* CubeVertexArray;
-		VertexArray* LightSourceVertexArray;
-        VertexArray* BasicWaterVertexArray;
-        std::map<std::string, Shader*> Shaders;
+        std::map<std::string, VertexArray*> VertexArrays;
+        std::vector<Shader*> Shaders;
+
+        Shader* GetShader(const std::string& ShaderName)
+        {
+            for (Shader* shader : Shaders)
+            {
+                if (shader->GetName() == ShaderName)
+                {
+                    return shader;
+                }
+            }
+
+            return nullptr;
+        }
 	};
     
 	class Renderer
@@ -26,13 +36,17 @@ namespace Achengine
 		static void Init();
 		static void Shutdown();
 
-        static void AddShader(const std::string& ShaderName, const std::string& ShaderPath);
+        static Shader* AddShader(const std::string& ShaderPath);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, float value);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec2& value);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec3& value);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::vec4& value);
         static void SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, const glm::mat4& value);
+
+        template<unsigned int N>
+        static VertexArray* AddVertexArray(const std::string& VertexArrayName, const float (&VertexCoords)[N], const BufferLayout& BufferLayout);
+        static VertexArray* GetVertexArray(const std::string& VertexArrayName);
 
 		static void OnWindowResize(uint32_t width, uint32_t height);
 
@@ -43,7 +57,7 @@ namespace Achengine
 		static void DrawQuad(const glm::vec2& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 		static void DrawQuad(const glm::vec3& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
 
-        static void DrawActor(AActor* ActorToDraw);
+        static void DrawVertexArray(const std::string& VertexArrayName);
 
 		inline static std::shared_ptr<RendererAPI::API> GetAPI() { return RendererAPI::GetAPI(); }
 	};

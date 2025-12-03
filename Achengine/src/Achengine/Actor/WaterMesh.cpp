@@ -13,34 +13,34 @@ namespace Achengine
 #else
         m_ShaderPath = "assets/shaders/BasicWater.glsl";
 #endif
-        m_ShaderName = "BasicWaterShader";
 
         Initialize();
     }
 
-    void UWaterMesh::DrawMesh(RendererStorage* RenderData)
+    void UWaterMesh::DrawMesh()
     {
-		Renderer::SetShaderUniform(m_ShaderName, "u_Transform", GetOwner()->GetActorTransform());
+        const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
+		Renderer::SetShaderUniform(ShaderName, "u_Transform", GetOwner()->GetActorTransform());
 
         constexpr int numWaves = 8;
-        Renderer::SetShaderUniform(m_ShaderName, "u_NumWaves", numWaves);
-        Renderer::SetShaderUniform(m_ShaderName, "u_envMap", 0);
+        Renderer::SetShaderUniform(ShaderName, "u_NumWaves", numWaves);
+        Renderer::SetShaderUniform(ShaderName, "u_envMap", 0);
 		for (int i = 0; i < numWaves; ++i) 
         {
             float amplitude = 0.5f / (i + 1);
-            Renderer::SetShaderUniform(m_ShaderName, format("u_Amplitude[%d]", i), amplitude);
+            Renderer::SetShaderUniform(ShaderName, format("u_Amplitude[%d]", i), amplitude);
 
             float wavelength = 8 * M_PI / (i + 1);
-            Renderer::SetShaderUniform(m_ShaderName, format("u_Wavelength[%d]", i), wavelength);
+            Renderer::SetShaderUniform(ShaderName, format("u_Wavelength[%d]", i), wavelength);
 
             float speed = 1.0f + 2*i;
-            Renderer::SetShaderUniform(m_ShaderName, format("u_Speed[%d]", i), speed);
+            Renderer::SetShaderUniform(ShaderName, format("u_Speed[%d]", i), speed);
             
             float angle = uniformRandomInRange(-M_PI/3, M_PI/3);
-            Renderer::SetShaderUniform(m_ShaderName, format("u_Direction[%d]", i), {cos(angle), sin(angle)});
+            Renderer::SetShaderUniform(ShaderName, format("u_Direction[%d]", i), {cos(angle), sin(angle)});
         }
 
-		RenderData->BasicWaterVertexArray->Bind();
-		RenderCommand::DrawIndexed(RenderData->BasicWaterVertexArray);
+        //TODO: Remove hardcoded string
+        Renderer::DrawVertexArray("BasicWaterVertexArray");
     }
 }

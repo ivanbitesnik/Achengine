@@ -6,16 +6,27 @@ namespace Achengine
 {
     class ACHENGINE_API WorldActorCache
     {
+        friend class AActor;
+
         public:
             WorldActorCache() {}
             virtual ~WorldActorCache();
 
-            void AddActorToCache(AActor* NewActor) { ActorCache.push_back(NewActor); }
             inline static WorldActorCache* Get() { return s_Instance; }
-            const std::vector<AActor*>& GetActorCache() const { return ActorCache; }
-        private:
-            std::vector<AActor*> ActorCache;
+            const std::unordered_set<AActor*>& GetActorCache() const { return ActorCache; }
+            
+            template<typename T>
+            static AActor* SpawnActor()
+            {
+                T* NewActor = new T();
+                return (AActor*)NewActor;
+            }
 
+            private:
+            void AddActorToCache(AActor* NewActor) { ActorCache.insert(NewActor); }
+
+            std::unordered_set<AActor*> ActorCache;
+            
             static WorldActorCache* s_Instance;
     };
 }

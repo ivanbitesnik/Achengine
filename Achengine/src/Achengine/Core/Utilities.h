@@ -9,4 +9,5 @@ namespace Achengine
     int padToPowerOfTwo(int n);
     std::string readTextFromFile(const std::string &filename);
     float uniformRandomInRange(float min, float max);
+    std::string GetObjectNameFromFilePath(const std::string& filePath);
 }

@@ -30,7 +30,7 @@ void Sandbox3D::OnAttach()
 	std::vector<glm::vec3> locations = {{0.0f, 10.0f, 0.0f}, {0.0f, 50.0f, 0.0f}, {20.0f, 30.0f, 0.0f}, {-20.0f, 30.0f, 0.0f}, {0.0f, 30.0f, 20.0f}, {0.0f, 30.0f, -20.0f}};
 	for (int i = 0; i < 6; i++)
 	{
-		Achengine::AActor* Actor = new Achengine::AActor();
+		Achengine::AActor* Actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 		Achengine::UStaticMesh* StaticMesh = new Achengine::UStaticMesh();
 		StaticMesh->SetTexture(m_Textures.at("Box"));
 		StaticMesh->SetSpecular(m_Textures.at("BoxSpecular"));
@@ -40,12 +40,12 @@ void Sandbox3D::OnAttach()
 		Actor->SetActorScale({ 10.0f, 10.0f, 10.0f});
 	}
 
-	Achengine::AActor* Light = new Achengine::AActor();
+	Achengine::AActor* Light = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	Light->SetStaticMesh(new Achengine::ULightMesh());
 	Light->SetActorLocation(ToTransform({0.0f, 0.0f, 30.0f}));
 	Light->SetActorScale({5.0f, 5.0f, 5.0f});
 
-	Achengine::AActor* WaterActor = new Achengine::AActor();
+	Achengine::AActor* WaterActor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	Achengine::UWaterMesh* WaterMesh = new Achengine::UWaterMesh();
 	WaterActor->SetStaticMesh(WaterMesh);
 	WaterActor->SetActorScale(ToTransform({ 100.0f, 100.0f, 20.0f}));
@@ -90,7 +90,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 		for (Achengine::AActor* Actor : Cache->GetActorCache())
 		{
 			//Actor->SetActorRotation({0.0f, 1.0f, 0.0f}, angle);
-			Achengine::Renderer::DrawActor(Actor);
+			Actor->Draw();
 		}
 	}
 

@@ -101,7 +101,7 @@ namespace Achengine
 	public:
 		virtual ~VertexBuffer() {}
 
-		static VertexBuffer* Create(uint32_t size, float* vertices);
+		static VertexBuffer* Create(uint32_t size, const float* vertices);
 
 		virtual void Bind() const = 0;
 		virtual void Unbind() const = 0;
@@ -117,7 +117,7 @@ namespace Achengine
 	public:
 		virtual ~IndexBuffer() {}
 
-		static IndexBuffer* Create(uint32_t count, uint32_t* indices);
+		static IndexBuffer* Create(uint32_t count, const uint32_t* indices);
 
 		virtual void Bind() const = 0;
 		virtual void Unbind() const = 0;

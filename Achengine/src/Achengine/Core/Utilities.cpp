@@ -84,4 +84,15 @@ namespace Achengine
         double v = min + n * (max - min);
         return v;
     }
+
+    std::string GetObjectNameFromFilePath(const std::string& filePath)
+    {
+        // Extract name from file path
+		auto lastSlash = filePath.find_last_of("/\\");
+		lastSlash = lastSlash == std::string::npos ? 0 : lastSlash + 1;
+		auto lastDot = filePath.rfind(".");
+		auto count = lastDot == std::string::npos ? filePath.size() - lastSlash : lastDot - lastSlash;
+
+		return filePath.substr(lastSlash, count);
+    }
 }

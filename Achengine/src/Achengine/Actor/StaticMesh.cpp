@@ -16,32 +16,32 @@ namespace Achengine
 #else
 	    m_ShaderPath = "assets/shaders/Cube.glsl";
 #endif
-        m_ShaderName = "StaticMeshShader";
         Initialize();
     }
 
     void UStaticMesh::Initialize()
     {
-        Renderer::AddShader(m_ShaderName, m_ShaderPath);
+        Renderer::AddShader(m_ShaderPath);
     }
 
-    void UStaticMesh::DrawMesh(RendererStorage* RenderData)
+    void UStaticMesh::DrawMesh()
     {
-		Renderer::SetShaderUniform(m_ShaderName, "u_Transform", GetOwner()->GetActorTransform());
+        const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
+		Renderer::SetShaderUniform(ShaderName, "u_Transform", GetOwner()->GetActorTransform());
 
         if (FMeshMaterial* Material = GetMaterial())
         {
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.color", Material->color);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.ambient", Material->ambient);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.diffuse", Material->diffuse);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.specular", Material->specular);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.shininess", Material->shininess);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.color", Material->color);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.ambient", Material->ambient);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.diffuse", Material->diffuse);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.specular", Material->specular);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.shininess", Material->shininess);
         }
         else if (Texture* texture = GetTexture())
         {
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.diffuse", 0);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.specular", 1);
-            Renderer::SetShaderUniform(m_ShaderName, "u_Material.shininess", 256.0f);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.diffuse", 0);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.specular", 1);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.shininess", 256.0f);
 		    texture->Bind();
             if (Texture* Specular = GetSpecular())
             {
@@ -49,7 +49,7 @@ namespace Achengine
             }
         }
 
-		RenderData->CubeVertexArray->Bind();
-		RenderCommand::DrawIndexed(RenderData->CubeVertexArray);
+        //TODO: Remove hardcoded string
+		Renderer::DrawVertexArray("CubeVertexArray");
     }
 }

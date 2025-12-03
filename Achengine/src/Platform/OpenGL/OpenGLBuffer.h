@@ -8,7 +8,7 @@ namespace Achengine
 	class OpenGLVertexBuffer : public VertexBuffer
 	{
 	public:
-		OpenGLVertexBuffer(uint32_t size, float* vertices);
+		OpenGLVertexBuffer(uint32_t size, const float* vertices);
 		~OpenGLVertexBuffer();
 
 		virtual void Bind() const override;
@@ -29,7 +29,7 @@ namespace Achengine
 	class OpenGLIndexBuffer : public IndexBuffer
 	{
 	public:
-		OpenGLIndexBuffer(uint32_t size, uint32_t* indices);
+		OpenGLIndexBuffer(uint32_t size, const uint32_t* indices);
 		~OpenGLIndexBuffer();
 
 		virtual void Bind() const override;
