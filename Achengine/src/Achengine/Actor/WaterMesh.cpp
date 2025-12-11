@@ -45,29 +45,56 @@ namespace Achengine
             return;
         }
 
-        std::vector<glm::vec3> vertices(9000);
-        std::vector<uint32_t> indices(9000*6);
+        std::vector<glm::vec3> vertices;
+        std::vector<uint32_t> indices;
 
-        const glm::vec3& location = {0.0f, 0.0f, 0.0f};
-        const glm::vec3& scale = {1.0f, 1.0f, 1.0f};
-
-        int vi = 0, ii = 0;
-        for (int x = location.x - 10*scale.x; x < location.x + 10*scale.x; ++x)
+        int ii = 0;
+        for (float i = 0.01f; i <= 1.0f ; i += 0.01f)
         {
-            for (int y = location.y - 10*scale.y; y < location.y + 10*scale.y; ++y)
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            vertices.push_back(glm::vec3( i, -i, -i)); 
+            vertices.push_back(glm::vec3( i,  i, -i));
+            vertices.push_back(glm::vec3( i,  i, -i));
+            vertices.push_back(glm::vec3(-i,  i, -i));
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            /////////////////////////////////////////
+            vertices.push_back(glm::vec3(-i, -i,  i));
+            vertices.push_back(glm::vec3( i, -i,  i));
+            vertices.push_back(glm::vec3( i,  i,  i));
+            vertices.push_back(glm::vec3( i,  i,  i));
+            vertices.push_back(glm::vec3(-i,  i,  i));
+            vertices.push_back(glm::vec3(-i, -i,  i));
+            /////////////////////////////////////////
+            vertices.push_back(glm::vec3(-i,  i,  i));
+            vertices.push_back(glm::vec3(-i,  i, -i));
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            vertices.push_back(glm::vec3(-i, -i,  i));
+            vertices.push_back(glm::vec3(-i,  i,  i));
+            /////////////////////////////////////////
+            vertices.push_back(glm::vec3( i,  i,  i));
+            vertices.push_back(glm::vec3( i,  i, -i));
+            vertices.push_back(glm::vec3( i, -i, -i)); 
+            vertices.push_back(glm::vec3( i, -i, -i)); 
+            vertices.push_back(glm::vec3( i, -i,  i));
+            vertices.push_back(glm::vec3( i,  i,  i));
+            /////////////////////////////////////////
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            vertices.push_back(glm::vec3( i, -i, -i)); 
+            vertices.push_back(glm::vec3( i, -i,  i));
+            vertices.push_back(glm::vec3( i, -i,  i));
+            vertices.push_back(glm::vec3(-i, -i,  i));
+            vertices.push_back(glm::vec3(-i, -i, -i));
+            /////////////////////////////////////////
+            vertices.push_back(glm::vec3(-i,  i, -i));
+            vertices.push_back(glm::vec3( i,  i, -i));
+            vertices.push_back(glm::vec3( i,  i,  i));
+            vertices.push_back(glm::vec3( i,  i,  i));
+            vertices.push_back(glm::vec3(-i,  i,  i));
+            vertices.push_back(glm::vec3(-i,  i, -i));
+            for (int j = 0; j < 36; ++j)
             {
-                const float height = location.z + 10*scale.z;
-                vertices[vi++] = glm::vec3(x, y, height);
-                vertices[vi++] = glm::vec3(x, y + 1, height);
-                vertices[vi++] = glm::vec3(x + 1, y, height);
-                vertices[vi++] = glm::vec3(x + 1, y, height);
-                vertices[vi++] = glm::vec3(x, y + 1, height);
-                vertices[vi++] = glm::vec3(x + 1, y + 1, height);
-                for (int j = 0; j < 6; ++j)
-                {
-                    indices[ii] = ii;
-                    ++ii;
-                }
+                indices.push_back(ii); ++ii;
             }
         }
 
