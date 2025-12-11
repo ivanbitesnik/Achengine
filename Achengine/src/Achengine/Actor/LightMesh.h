@@ -26,7 +26,7 @@ namespace Achengine
             
         protected:
             virtual void SetUniforms() override;
-            virtual void GenerateMeshDrawable() override;
+            virtual void GenerateVertexArray() override;
         private:
             FLightSource* m_LightSource = nullptr;
     };

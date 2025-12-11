@@ -3,7 +3,6 @@
 
 #include "Achengine/Core/Utilities.h"
 #include "Achengine/Renderer/Renderer.h"
-#include "Achengine/Actor/MeshDrawable.h"
 #include "Achengine/Actor/WorldActorCache.h"
 
 #include <glad/glad.h>
@@ -13,7 +12,7 @@ namespace Achengine
     void UMesh::Initialize()
     {
         Renderer::AddShader(m_ShaderPath);
-        GenerateMeshDrawable();
+        GenerateVertexArray();
         SetUniforms();
     }
 
@@ -24,6 +23,6 @@ namespace Achengine
 
     void UMesh::DrawMesh()
     {
-        WorldActorCache::Get()->GetMeshDrawable(GetShaderName())->DrawMesh(this);
+        Renderer::DrawMesh(this);
     }
 }

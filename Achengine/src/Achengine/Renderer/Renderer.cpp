@@ -5,7 +5,6 @@
 #include "Renderer2D.h"
 #include "Achengine/Renderer/EditorCamera.h"
 #include "Achengine/Actor/Actor.h"
-#include "Achengine/Actor/MeshDrawable.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -117,6 +116,60 @@ namespace Achengine
 		return nullptr;
 	}
 
+	std::vector<glm::vec3> Renderer::GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t> indices)
+    {
+        std::vector<glm::vec3> normals(vertices.size());
+        for (int i = 0; i < indices.size(); i += 3) 
+		{
+            uint32_t tri[3] = { indices[i], indices[i + 1], indices[i + 2] };
+            glm::vec3 a = vertices[tri[0]], 
+            b = vertices[tri[1]],
+            c = vertices[tri[2]];
+            glm::vec3 ab = b - a, ac = c - a;
+            glm::vec3 n = glm::normalize(glm::cross(ab, ac));
+            for (int j = 0; j < 3; ++j)
+            normals[tri[j]] = normals[tri[j]] + n;
+        }
+
+        for (int i = 0; i < vertices.size(); ++i)
+            normals[i] = glm::normalize(normals[i]);
+
+		return normals;
+    }
+
+    void Renderer::GenerateVertexArray(const std::string& VertexId, const std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+		 const std::vector<std::pair<float, float>>& texCoords, const std::vector<uint32_t>& indices, const BufferLayout& Layout)
+    {
+		if (normals.size() == 0)
+		{
+			normals = GenerateNormals(vertices, indices);
+		}
+        std::vector<float> vertexArray;
+        for (int i = 0; i < vertices.size(); ++i)
+        {
+            vertexArray.push_back(vertices[i].x);
+            vertexArray.push_back(vertices[i].y);
+            vertexArray.push_back(vertices[i].z);
+            if (normals.size() > 0)
+            {
+                vertexArray.push_back(normals[i].x);
+                vertexArray.push_back(normals[i].y);
+                vertexArray.push_back(normals[i].z);
+            }
+            if (texCoords.size() > 0)
+            {
+                vertexArray.push_back(texCoords[i].first);
+                vertexArray.push_back(texCoords[i].second);
+            }
+        }
+
+        Renderer::AddVertexArray(VertexId, vertexArray, Layout);
+        if (indices.size() > 0)
+        {
+            Renderer::AddIndexBufferToArray(VertexId, indices);
+        }
+    }
+
 	void Renderer::OnWindowResize(uint32_t width, uint32_t height)
 	{
 		RenderCommand::SetViewport(0, 0, width, height);
@@ -167,7 +220,7 @@ namespace Achengine
 		RenderCommand::DrawIndexed(VertexArrayToDraw);
 	}
 
-	void Renderer::DrawMesh(UMesh* Mesh, const std::string& DrawableID)
+	void Renderer::DrawMesh(UMesh* Mesh)
 	{
 		const std::string& ShaderName = Mesh->GetShaderName();
 		Shader* shader = s_RenderData->GetShader(ShaderName);
@@ -199,7 +252,7 @@ namespace Achengine
 			shader->Bind();
 		}
 
-		DrawVertexArray(DrawableID);
+		DrawVertexArray(ShaderName);
 	}
 
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value)

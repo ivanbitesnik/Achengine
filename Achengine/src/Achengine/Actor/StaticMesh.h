@@ -21,6 +21,6 @@ namespace Achengine
 
         protected:
             virtual void SetUniforms() override;
-            virtual void GenerateMeshDrawable() override;
+            virtual void GenerateVertexArray() override;
     };
 }

@@ -3,7 +3,6 @@
 
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Actor/Actor.h"
-#include "Achengine/Actor/MeshDrawable.h"
 
 namespace Achengine
 {
@@ -39,8 +38,13 @@ namespace Achengine
         }
     }
 
-    void UWaterMesh::GenerateMeshDrawable()
+    void UWaterMesh::GenerateVertexArray()
     {
+        if (Renderer::GetVertexArray(GetShaderName()))
+        {
+            return;
+        }
+
         std::vector<glm::vec3> vertices(9000);
         std::vector<uint32_t> indices(9000*6);
 
@@ -74,6 +78,6 @@ namespace Achengine
 
         std::vector<glm::vec3> normals;
         std::vector<std::pair<float, float>> texCoords;
-        new UMeshDrawable(GetShaderName(), vertices, normals, texCoords, indices, Layout);
+        Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }
 }

@@ -3,7 +3,6 @@
 
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Actor/Actor.h"
-#include "Achengine/Actor/MeshDrawable.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -39,7 +38,7 @@ namespace Achengine
 		Renderer::SetShaderUniform(ShaderName, "u_Light.specular", GetLightSource()->specular);
 	}
 
-	void ULightMesh::GenerateMeshDrawable()
+	void ULightMesh::GenerateVertexArray()
 	{
 		static float cubeWithNormalsVertexArray[6 * 6 * 6] = {
 			// positions          // normals
@@ -86,7 +85,7 @@ namespace Achengine
 			-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,
     	};
         
-        if (WorldActorCache::Get()->GetMeshDrawable(GetShaderName()))
+        if (Renderer::GetVertexArray(GetShaderName()))
         {
             return;
         }
@@ -119,6 +118,6 @@ namespace Achengine
 		};
 		
 		std::vector<std::pair<float, float>> texCoords;
-        new UMeshDrawable(GetShaderName(), vertices, normals, texCoords, indices, Layout);
+        Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
 	}
 }

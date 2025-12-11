@@ -4,7 +4,6 @@
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Actor/Actor.h"
 #include "Achengine/Renderer/EditorCamera.h"
-#include "Achengine/Actor/MeshDrawable.h"
 
 namespace Achengine
 {
@@ -45,7 +44,7 @@ namespace Achengine
         }
     }
 
-    void UStaticMesh::GenerateMeshDrawable()
+    void UStaticMesh::GenerateVertexArray()
     {
         static float texturedCubeWithNormalsVertexArray[8 * 6 * 6] = 
         {
@@ -93,7 +92,7 @@ namespace Achengine
             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
         };
         
-        if (WorldActorCache::Get()->GetMeshDrawable(GetShaderName()))
+        if (Renderer::GetVertexArray(GetShaderName()))
         {
             return;
         }
@@ -132,6 +131,6 @@ namespace Achengine
 			{ ShaderDataType::Float2, "a_TexCoords"}
 		};
 
-        new UMeshDrawable(GetShaderName(), vertices, normals, texCoords, indices, Layout);
+        Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }
 }

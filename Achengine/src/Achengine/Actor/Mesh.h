@@ -35,7 +35,7 @@ namespace Achengine
             void Initialize();
 
             virtual void SetUniforms() {}
-            virtual void GenerateMeshDrawable() {}
+            virtual void GenerateVertexArray() {}
 
             std::string m_ShaderPath;
 

@@ -14,14 +14,4 @@ namespace Achengine
 
         delete s_Instance; 
     }
-
-    UMeshDrawable* WorldActorCache::GetMeshDrawable(const std::string& DrawableID) const
-    {
-        if (MeshDrawableCache.count(DrawableID))
-        {
-            return MeshDrawableCache.at(DrawableID);
-        }
-
-        return nullptr;
-    }
 }

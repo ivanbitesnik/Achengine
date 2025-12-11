@@ -9,7 +9,6 @@
 namespace Achengine
 {
     class AActor;
-    class UMeshDrawable;
 
     struct RendererStorage
 	{
@@ -57,6 +56,10 @@ namespace Achengine
         static void AddIndexBufferToArray(const std::string& VertexArrayName, const std::vector<uint32_t>& Indices);
         static VertexArray* GetVertexArray(const std::string& VertexArrayName);
 
+        static std::vector<glm::vec3> GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t> indices);
+        static void GenerateVertexArray(const std::string& VertexId, const std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+             const std::vector<std::pair<float, float>>& texCoords, const std::vector<uint32_t>& indices, const BufferLayout& Layout);
+
 		static void OnWindowResize(uint32_t width, uint32_t height);
         
 		static void BeginScene(Camera* camera);
@@ -67,7 +70,7 @@ namespace Achengine
 		static void DrawQuad(const glm::vec3& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));
         
         static void DrawVertexArray(const std::string& VertexArrayName);
-        static void DrawMesh(UMesh* Mesh, const std::string& DrawableID);
+        static void DrawMesh(UMesh* Mesh);
 
 		inline static std::shared_ptr<RendererAPI::API> GetAPI() { return RendererAPI::GetAPI(); }
 	};
