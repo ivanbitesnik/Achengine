@@ -19,7 +19,6 @@ uniform float u_Time;
 
 out vec3 position;
 out vec3 worldNormal;
-out vec3 eyeNormal;
 
 float wave(int i, float x, float y) {
     float frequency = 2*pi/u_Wavelength[i];
@@ -62,13 +61,54 @@ vec3 waveNormal(float x, float y) {
     return normalize(n);
 }
 
+// Calculates wave value and its derivative, 
+// for the wave direction, location in space, wave frequency and time
+vec2 wavedx(vec2 location, vec2 direction, float frequency, float timeshift) {
+    float x = dot(direction, location) * frequency + timeshift;
+    float wave = exp(sin(x) - 1.0);
+    float dx = wave * cos(x);
+    return vec2(wave, -dx);
+}
+
+// Calculates waves by summing octaves of various waves with various parameters
+float getWaves(vec2 location) {
+    float wavePhaseShift = length(location) * 0.1; // this is to avoid every octave having exactly the same phase everywhere
+    float iter = 0.0; // this will help generating well distributed wave directions
+    float weight = 1.0;// weight in final sum for the wave, this will change every iteration
+    float sumOfValues = 0.0; // will store final sum of values
+    float sumOfWeights = 0.0; // will store final sum of weights
+    for(int i=0; i < u_NumWaves; i++) {
+        // generate some wave direction that looks kind of random
+        vec2 p = vec2(sin(iter), cos(iter));
+        float frequency = 2*pi/u_Wavelength[i];
+        float phase = u_Speed[i] * frequency;
+        
+        // calculate wave data
+        vec2 res = wavedx(location, u_Direction[i], frequency, u_Time * phase + wavePhaseShift);
+
+        // shift position around according to wave drag and derivative of the wave
+        location += p * res.y * weight * 0.38;
+
+        // add the results to sums
+        sumOfValues += res.x * weight;
+        sumOfWeights += weight;
+
+        // modify next octave
+        weight = mix(weight, 0.0, 0.2);
+
+        // add some kind of random value to make next wave look random too
+        iter += 1232.399963;
+    }
+    // calculate and return
+    return sumOfValues / sumOfWeights;
+}
+
 void main()
 {
 	vec4 pos = u_Transform * vec4(a_Position, 1.0);
-    pos.z += waveHeight(pos.x, pos.y);
+    pos.y += waveHeight(pos.x, pos.z);
     position = pos.xyz / pos.w;
-    worldNormal = waveNormal(pos.x, pos.y);
-    eyeNormal = a_Normal * worldNormal;
+    worldNormal = waveNormal(pos.x, pos.z);
     gl_Position = u_ViewProjection * pos;
 }
 
@@ -77,7 +117,6 @@ void main()
 
 in vec3 position;
 in vec3 worldNormal;
-in vec3 eyeNormal;
 
 uniform vec3 u_ViewPosition;
 uniform samplerCube u_EnvMap;

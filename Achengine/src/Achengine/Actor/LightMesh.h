@@ -16,15 +16,17 @@ namespace Achengine
             glm::vec3 specular = glm::vec3(0.5f, 0.5f, 0.5f);
     };
 
-    class ULightMesh : public UStaticMesh
+    class ULightMesh : public UMesh
     {
         public:
             ULightMesh();
 
             void SetLightSource(FLightSource* NewLightSource) { m_LightSource = NewLightSource; }
             FLightSource* GetLightSource() const { return m_LightSource; }
-
-            virtual void DrawMesh() override;
+            
+        protected:
+            virtual void SetUniforms() override;
+            virtual void GenerateMeshDrawable() override;
         private:
             FLightSource* m_LightSource = nullptr;
     };

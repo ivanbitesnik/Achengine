@@ -4,6 +4,7 @@
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Actor/Actor.h"
 #include "Achengine/Renderer/EditorCamera.h"
+#include "Achengine/Actor/MeshDrawable.h"
 
 namespace Achengine
 {
@@ -19,15 +20,9 @@ namespace Achengine
         Initialize();
     }
 
-    void UStaticMesh::Initialize()
-    {
-        Renderer::AddShader(m_ShaderPath);
-    }
-
-    void UStaticMesh::DrawMesh()
+    void UStaticMesh::SetUniforms()
     {
         const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
-		Renderer::SetShaderUniform(ShaderName, "u_Transform", GetOwner()->GetActorTransform());
 
         if (FMeshMaterial* Material = GetMaterial())
         {
@@ -48,8 +43,95 @@ namespace Achengine
                 texture->BindSpecularMap(Specular);
             }
         }
+    }
 
-        //TODO: Remove hardcoded string
-		Renderer::DrawVertexArray("CubeVertexArray");
+    void UStaticMesh::GenerateMeshDrawable()
+    {
+        static float texturedCubeWithNormalsVertexArray[8 * 6 * 6] = 
+        {
+            // positions          // normals           // texture coords
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+            1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+            1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+            1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+            -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+            1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
+            1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+            1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+            -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+            
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+            
+            1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+            1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+            1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+            1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+            1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+            1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+            
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+            1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+            1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+            1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+            -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+            
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+            1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+            1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+            1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
+        };
+        
+        if (WorldActorCache::Get()->GetMeshDrawable(GetShaderName()))
+        {
+            return;
+        }
+
+        std::vector<glm::vec3> vertices;
+        std::vector<glm::vec3> normals;
+        std::vector<std::pair<float, float>> texCoords;
+        glm::vec3 currentVertex;
+        std::pair<float, float> currentTexCoord;
+        for (int i = 0; i < sizeof(texturedCubeWithNormalsVertexArray); i += 8)
+        {
+            currentVertex.x = texturedCubeWithNormalsVertexArray[i];
+            currentVertex.y = texturedCubeWithNormalsVertexArray[i+1];
+            currentVertex.z = texturedCubeWithNormalsVertexArray[i+2];
+            vertices.push_back(currentVertex);
+            
+            currentVertex.x = texturedCubeWithNormalsVertexArray[i+3];
+            currentVertex.y = texturedCubeWithNormalsVertexArray[i+4];
+            currentVertex.z = texturedCubeWithNormalsVertexArray[i+5];
+            normals.push_back(currentVertex);
+            
+            currentTexCoord.first = texturedCubeWithNormalsVertexArray[i+6];
+            currentTexCoord.second = texturedCubeWithNormalsVertexArray[i+7];
+            texCoords.push_back(currentTexCoord);
+        }
+
+        std::vector<uint32_t> indices;
+        for (int j = 0; j < vertices.size()*6; ++j) 
+        {
+            indices.push_back(j);
+        }
+
+        BufferLayout Layout = {
+			{ ShaderDataType::Float3, "a_Position" },
+			{ ShaderDataType::Float3, "a_Normal" },
+			{ ShaderDataType::Float2, "a_TexCoords"}
+		};
+
+        new UMeshDrawable(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }
 }

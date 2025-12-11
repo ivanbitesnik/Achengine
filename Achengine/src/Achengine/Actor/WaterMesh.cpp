@@ -3,6 +3,7 @@
 
 #include "Achengine/Renderer/Renderer.h"
 #include "Achengine/Actor/Actor.h"
+#include "Achengine/Actor/MeshDrawable.h"
 
 namespace Achengine
 {
@@ -13,16 +14,13 @@ namespace Achengine
 #else
         m_ShaderPath = "assets/shaders/BasicWater.glsl";
 #endif
-
         Initialize();
     }
 
-    void UWaterMesh::DrawMesh()
+    void UWaterMesh::SetUniforms()
     {
+        constexpr int numWaves = 4;
         const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
-		Renderer::SetShaderUniform(ShaderName, "u_Transform", GetOwner()->GetActorTransform());
-
-        constexpr int numWaves = 8;
         Renderer::SetShaderUniform(ShaderName, "u_NumWaves", numWaves);
         Renderer::SetShaderUniform(ShaderName, "u_envMap", 0);
 		for (int i = 0; i < numWaves; ++i) 
@@ -39,8 +37,43 @@ namespace Achengine
             float angle = uniformRandomInRange(-M_PI/3, M_PI/3);
             Renderer::SetShaderUniform(ShaderName, format("u_Direction[%d]", i), {cos(angle), sin(angle)});
         }
+    }
 
-        //TODO: Remove hardcoded string
-        Renderer::DrawVertexArray("BasicWaterVertexArray");
+    void UWaterMesh::GenerateMeshDrawable()
+    {
+        std::vector<glm::vec3> vertices(9000);
+        std::vector<uint32_t> indices(9000*6);
+
+        const glm::vec3& location = {0.0f, 0.0f, 0.0f};
+        const glm::vec3& scale = {1.0f, 1.0f, 1.0f};
+
+        int vi = 0, ii = 0;
+        for (int x = location.x - 10*scale.x; x < location.x + 10*scale.x; ++x)
+        {
+            for (int y = location.y - 10*scale.y; y < location.y + 10*scale.y; ++y)
+            {
+                const float height = location.z + 10*scale.z;
+                vertices[vi++] = glm::vec3(x, y, height);
+                vertices[vi++] = glm::vec3(x, y + 1, height);
+                vertices[vi++] = glm::vec3(x + 1, y, height);
+                vertices[vi++] = glm::vec3(x + 1, y, height);
+                vertices[vi++] = glm::vec3(x, y + 1, height);
+                vertices[vi++] = glm::vec3(x + 1, y + 1, height);
+                for (int j = 0; j < 6; ++j)
+                {
+                    indices[ii] = ii;
+                    ++ii;
+                }
+            }
+        }
+
+        BufferLayout Layout = {
+			{ ShaderDataType::Float3, "a_Position" },
+			{ ShaderDataType::Float3, "a_Normal" }
+		};
+
+        std::vector<glm::vec3> normals;
+        std::vector<std::pair<float, float>> texCoords;
+        new UMeshDrawable(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }
 }

@@ -5,9 +5,8 @@
 
 namespace Achengine
 {
-    class UStaticMesh;
-    struct RendererStorage;
-
+    class UMesh;
+    
     struct FActorRotation
     {
         public:
@@ -38,8 +37,8 @@ namespace Achengine
                 return nullptr;
             };
 
-            void SetStaticMesh(UStaticMesh* NewStaticMesh);
-            UStaticMesh* GetStaticMesh() const { return GetComponentByClass<UStaticMesh>(); }
+            void SetMesh(UMesh* NewMesh);
+            UMesh* GetMesh() const { return GetComponentByClass<UMesh>(); }
             
             void SetActorLocation(glm::vec3 NewLocation) { ActorLocation = NewLocation; }
             glm::vec3 GetActorLocation() const { return ActorLocation; }

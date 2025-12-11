@@ -4,11 +4,13 @@
 
 namespace Achengine
 {
-    class UWaterMesh : public UStaticMesh
+    class UWaterMesh : public UMesh
     {
         public:
             UWaterMesh();
-
-            virtual void DrawMesh() override;
-    };
+            
+        protected:
+            virtual void SetUniforms() override;
+            virtual void GenerateMeshDrawable() override;
+        };
 }

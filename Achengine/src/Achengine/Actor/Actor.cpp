@@ -22,24 +22,24 @@ namespace Achengine
         ActorComponents.push_back(NewComponent);
     }
 
-    void AActor::SetStaticMesh(UStaticMesh* NewStaticMesh)
+    void AActor::SetMesh(UMesh* NewMesh)
     {
-        UStaticMesh* CurrentStaticMesh = GetComponentByClass<UStaticMesh>();
-        if (!CurrentStaticMesh)
+        UMesh* CurrentMesh = GetComponentByClass<UMesh>();
+        if (!CurrentMesh)
         {
-            AddActorComponent(NewStaticMesh);
+            AddActorComponent(NewMesh);
         }
         else
         {
-            CurrentStaticMesh = NewStaticMesh;
+            CurrentMesh = NewMesh;
         }
     }
 
     void AActor::Draw()
     {
-        if (UStaticMesh* StaticMesh = GetStaticMesh())
+        if (UMesh* Mesh = GetMesh())
         {
-            StaticMesh->DrawMesh();
+            Mesh->DrawMesh();
         }
     }
 

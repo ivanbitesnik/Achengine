@@ -1,31 +1,15 @@
 #pragma once
 
-#include "Achengine/Actor/ActorComponent.h"
+#include "Achengine/Actor/Mesh.h"
 
 namespace Achengine
 {
-    class Texture;
-    struct RendererStorage;
-
-    struct FMeshMaterial
-    {
-        public:
-            FMeshMaterial(const glm::vec3& color, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular, const float shininess) :
-                color(color), ambient(ambient), diffuse(diffuse), specular(specular), shininess(shininess) {}
-            glm::vec3 color = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 ambient = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 diffuse = glm::vec3(1.0f, 0.5f, 0.31f);
-            glm::vec3 specular = glm::vec3(0.5f, 0.5f, 0.5f);
-            float shininess = 32.0f;
-    };
-
-    class UStaticMesh : public UActorComponent
+    class UStaticMesh : public UMesh
     {
         // TODO: Remove dependency
         friend class ULightMesh;
         public:
             UStaticMesh();
-            void Initialize();
 
             void SetMaterial(FMeshMaterial* NewMaterial) { m_Material = NewMaterial; }
             FMeshMaterial* GetMaterial() const { return m_Material; }
@@ -35,12 +19,8 @@ namespace Achengine
             void SetSpecular(Texture* NewSpecular) { m_Specular = NewSpecular; }
             Texture* GetSpecular() const { return m_Specular; }
 
-            virtual void DrawMesh();
         protected:
-            std::string m_ShaderPath;
-        private:
-            FMeshMaterial* m_Material = nullptr;
-            Texture* m_Texture = nullptr;
-            Texture* m_Specular = nullptr;
+            virtual void SetUniforms() override;
+            virtual void GenerateMeshDrawable() override;
     };
 }

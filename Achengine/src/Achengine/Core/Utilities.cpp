@@ -79,7 +79,6 @@ namespace Achengine
 
     float uniformRandomInRange(float min, float max) 
     {
-        assert(min < max);
         double n = (double) rand() / (double) RAND_MAX;
         double v = min + n * (max - min);
         return v;
@@ -94,5 +93,30 @@ namespace Achengine
 		auto count = lastDot == std::string::npos ? filePath.size() - lastSlash : lastDot - lastSlash;
 
 		return filePath.substr(lastSlash, count);
+    }
+
+    std::vector<float> FlattenVector(const std::vector<glm::vec3>& vector)
+    {
+        std::vector<float> res;
+        for (const glm::vec3& val : vector)
+        {   
+            res.push_back(val.x);
+            res.push_back(val.y);
+            res.push_back(val.z);
+        }
+
+        return res;
+    }
+
+    std::vector<float> FlattenVector(const std::vector<std::pair<float, float>>& vector)
+    {
+        std::vector<float> res;
+        for (const std::pair<float, float>& val : vector)
+        {
+            res.push_back(val.first);
+            res.push_back(val.second);
+        }
+
+        return res;
     }
 }

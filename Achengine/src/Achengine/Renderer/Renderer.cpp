@@ -5,8 +5,11 @@
 #include "Renderer2D.h"
 #include "Achengine/Renderer/EditorCamera.h"
 #include "Achengine/Actor/Actor.h"
+#include "Achengine/Actor/MeshDrawable.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <glad/glad.h>
 
 namespace Achengine
 {
@@ -25,8 +28,7 @@ namespace Achengine
 			{ ShaderDataType::Float2, "a_TexCoord" }
 		};
 		VertexArray* QuadVertexArray = AddVertexArray("QuadVertexArray", quadVertexArray, QuadBufferLayout);
-		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(quadIndexArray) / sizeof(uint32_t), quadIndexArray);
-		QuadVertexArray->SetIndexBuffer(squareIndexBuffer);
+		AddIndexBufferToArray("QuadVertexArray", quadIndexArray);
 
 		s_RenderData->WhiteTexture = Texture2D::Create(1, 1);
 		uint32_t whiteTextureData = 0xffffffff;
@@ -34,27 +36,6 @@ namespace Achengine
 
 		Shader* TextureShader = Renderer::AddShader(TextureShaderPath);
 		Renderer::SetShaderUniform(TextureShader->GetName(), "u_Texture", 0);
-		
-		// Basic Water shader //////////////////////////////////////////////
-		BufferLayout BasicWaterBufferLayout = {
-			{ ShaderDataType::Float3, "a_Position" },
-			{ ShaderDataType::Float3, "a_Normal" }
-		};
-		AddVertexArray("BasicWaterVertexArray", cubeWithNormalsVertexArray, BasicWaterBufferLayout);
-
-		// Cube shader /////////////////////////////////////////////////////
-		BufferLayout CubeBufferLayout = {
-			{ ShaderDataType::Float3, "a_Position" },
-			{ ShaderDataType::Float3, "a_Normal" },
-			{ ShaderDataType::Float2, "a_TexCoords"}
-		};
-		AddVertexArray("CubeVertexArray", texturedCubeWithNormalsVertexArray, CubeBufferLayout);
-
-		// Lighting shader /////////////////////////////////////////////////
-		BufferLayout LightSourceBufferLayout = {
-			{ ShaderDataType::Float3, "a_Position" }
-		};
-		AddVertexArray("LightSourceVertexArray", cubeVertexArray, LightSourceBufferLayout);
 	}
 
 	void Renderer::Shutdown()
@@ -79,7 +60,7 @@ namespace Achengine
 	}
 
 	template<unsigned int N>
-	VertexArray* Renderer::AddVertexArray(const std::string& VertexArrayName, const float (&VertexCoords)[N], const BufferLayout& BufferLayout)
+	VertexArray* Renderer::AddVertexArray(const std::string& VertexArrayName, float (&VertexCoords)[N], const BufferLayout& BufferLayout)
 	{
 		VertexArray* NewVertexArray = VertexArray::Create();
 		VertexBuffer* VertexBuffer = VertexBuffer::Create(sizeof(VertexCoords), VertexCoords);
@@ -88,6 +69,42 @@ namespace Achengine
 		
 		s_RenderData->VertexArrays.insert({VertexArrayName, NewVertexArray});
 		return NewVertexArray;
+	}
+
+	VertexArray* Renderer::AddVertexArray(const std::string& VertexArrayName, const std::vector<float>& VertexCoords, const BufferLayout& BufferLayout)
+	{
+		VertexArray* NewVertexArray = VertexArray::Create();
+		VertexBuffer* VertexBuffer = VertexBuffer::Create(VertexCoords.size(), &VertexCoords[0]);
+		VertexBuffer->SetLayout(BufferLayout);
+		NewVertexArray->AddVertexBuffer(VertexBuffer);
+		
+		s_RenderData->VertexArrays.insert({VertexArrayName, NewVertexArray});
+		return NewVertexArray;
+	}
+
+	template<unsigned int N>
+	void Renderer::AddIndexBufferToArray(const std::string& VertexArrayName, uint32_t (&Indices)[N])
+	{
+		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(Indices) / sizeof(uint32_t), Indices);
+		VertexArray* VA = GetVertexArray(VertexArrayName);
+		if (!VA)
+		{
+			return;
+		}
+
+		VA->SetIndexBuffer(squareIndexBuffer);
+	}
+
+	void Renderer::AddIndexBufferToArray(const std::string& VertexArrayName, const std::vector<uint32_t>& Indices)
+	{
+		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(Indices.size() / sizeof(uint32_t), &Indices[0]);
+		VertexArray* VA = GetVertexArray(VertexArrayName);
+		if (!VA)
+		{
+			return;
+		}
+
+		VA->SetIndexBuffer(squareIndexBuffer);
 	}
 
 	VertexArray* Renderer::GetVertexArray(const std::string& VertexArrayName)
@@ -108,14 +125,8 @@ namespace Achengine
 	void Renderer::BeginScene(Camera* camera)
 	{
 		EditorCamera* Camera = (EditorCamera*)camera;
-		const glm::vec3& CameraPosition = Camera->GetPosition();
-		const glm::mat4& ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
-
-		for (Shader* shader : s_RenderData->Shaders)
-		{
-			Renderer::SetShaderUniform(shader->GetName(), "u_ViewProjection", ViewProjectionMatrix);
-			Renderer::SetShaderUniform(shader->GetName(), "u_ViewPosition", CameraPosition);
-		}
+		s_RenderData->CameraPosition = Camera->GetPosition();
+		s_RenderData->ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
 	}
 
 	void Renderer::EndScene()
@@ -154,6 +165,41 @@ namespace Achengine
 		VertexArray* VertexArrayToDraw = GetVertexArray(VertexArrayName);
 		VertexArrayToDraw->Bind();
 		RenderCommand::DrawIndexed(VertexArrayToDraw);
+	}
+
+	void Renderer::DrawMesh(UMesh* Mesh, const std::string& DrawableID)
+	{
+		const std::string& ShaderName = Mesh->GetShaderName();
+		Shader* shader = s_RenderData->GetShader(ShaderName);
+		glPushAttrib(GL_TEXTURE_BIT | GL_ENABLE_BIT);
+		if (Mesh->GetTexture())
+		{
+			Mesh->GetTexture()->Bind();
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+
+		if (shader) {
+			if (shader->HasUniform("u_Time"))
+			{
+				SetShaderUniform(ShaderName, "u_Time", (float)getTime());
+			}
+			if (shader->HasUniform("u_ViewPosition"))
+			{
+				SetShaderUniform(ShaderName, "u_ViewPosition", s_RenderData->CameraPosition);
+			}
+			if (shader->HasUniform("u_Transform"))
+			{
+				SetShaderUniform(ShaderName, "u_Transform", Mesh->GetOwner()->GetActorTransform());
+			}
+			
+			SetShaderUniform(ShaderName, "u_ViewProjection", s_RenderData->ViewProjectionMatrix);
+			shader->Bind();
+		}
+
+		DrawVertexArray(DrawableID);
 	}
 
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value)

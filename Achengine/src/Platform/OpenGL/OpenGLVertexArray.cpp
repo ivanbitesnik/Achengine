@@ -25,7 +25,7 @@ namespace Achengine
 		ACHENGINE_CORE_ASSERT(false, "Unknown shader data type!");
 		return GL_NONE;
 	}
-
+	
 	OpenGLVertexArray::OpenGLVertexArray()
 	{
 		glCreateVertexArrays(1, &m_RendererID);
