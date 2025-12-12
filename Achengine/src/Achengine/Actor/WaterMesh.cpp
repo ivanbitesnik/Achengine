@@ -40,61 +40,64 @@ namespace Achengine
 
     void UWaterMesh::GenerateVertexArray()
     {
-        if (Renderer::GetVertexArray(GetShaderName()))
-        {
-            return;
-        }
+        constexpr float upperBound = 1.0f;
+        constexpr float lowerBound = upperBound * -1.0f;
+        constexpr float vertexStep = 0.1f;
+        constexpr float k = lowerBound + vertexStep;
 
         std::vector<glm::vec3> vertices;
-        std::vector<uint32_t> indices;
-
-        int ii = 0;
-        for (float i = 0.01f; i <= 1.0f ; i += 0.01f)
+        constexpr int indexCount = (upperBound - lowerBound) / vertexStep;
+        std::vector<uint32_t> indices(indexCount*indexCount * 36);
+        uint32_t ii = 0;
+        for (float i = 0.0f; i <= (upperBound - lowerBound); i += vertexStep)
         {
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            vertices.push_back(glm::vec3( i, -i, -i)); 
-            vertices.push_back(glm::vec3( i,  i, -i));
-            vertices.push_back(glm::vec3( i,  i, -i));
-            vertices.push_back(glm::vec3(-i,  i, -i));
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            /////////////////////////////////////////
-            vertices.push_back(glm::vec3(-i, -i,  i));
-            vertices.push_back(glm::vec3( i, -i,  i));
-            vertices.push_back(glm::vec3( i,  i,  i));
-            vertices.push_back(glm::vec3( i,  i,  i));
-            vertices.push_back(glm::vec3(-i,  i,  i));
-            vertices.push_back(glm::vec3(-i, -i,  i));
-            /////////////////////////////////////////
-            vertices.push_back(glm::vec3(-i,  i,  i));
-            vertices.push_back(glm::vec3(-i,  i, -i));
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            vertices.push_back(glm::vec3(-i, -i,  i));
-            vertices.push_back(glm::vec3(-i,  i,  i));
-            /////////////////////////////////////////
-            vertices.push_back(glm::vec3( i,  i,  i));
-            vertices.push_back(glm::vec3( i,  i, -i));
-            vertices.push_back(glm::vec3( i, -i, -i)); 
-            vertices.push_back(glm::vec3( i, -i, -i)); 
-            vertices.push_back(glm::vec3( i, -i,  i));
-            vertices.push_back(glm::vec3( i,  i,  i));
-            /////////////////////////////////////////
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            vertices.push_back(glm::vec3( i, -i, -i)); 
-            vertices.push_back(glm::vec3( i, -i,  i));
-            vertices.push_back(glm::vec3( i, -i,  i));
-            vertices.push_back(glm::vec3(-i, -i,  i));
-            vertices.push_back(glm::vec3(-i, -i, -i));
-            /////////////////////////////////////////
-            vertices.push_back(glm::vec3(-i,  i, -i));
-            vertices.push_back(glm::vec3( i,  i, -i));
-            vertices.push_back(glm::vec3( i,  i,  i));
-            vertices.push_back(glm::vec3( i,  i,  i));
-            vertices.push_back(glm::vec3(-i,  i,  i));
-            vertices.push_back(glm::vec3(-i,  i, -i));
-            for (int j = 0; j < 36; ++j)
+            for (float j = 0.0f; j <= (upperBound - lowerBound); j += vertexStep)
             {
-                indices.push_back(ii); ++ii;
+                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, lowerBound + j));
+                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, k          + j));
+                vertices.push_back(glm::vec3(lowerBound, k + i,          k          + j));
+                vertices.push_back(glm::vec3(lowerBound, k + i,          k          + j));
+                vertices.push_back(glm::vec3(lowerBound, k + i,          lowerBound + j));
+                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, lowerBound + j));
+                //////////////////////////////////////////////////////////////////////////
+                vertices.push_back(glm::vec3(upperBound, lowerBound + i, lowerBound + j));
+                vertices.push_back(glm::vec3(upperBound, lowerBound + i, k          + j));
+                vertices.push_back(glm::vec3(upperBound, k + i,          k          + j));
+                vertices.push_back(glm::vec3(upperBound, k + i,          k          + j));
+                vertices.push_back(glm::vec3(upperBound, k + i,          lowerBound + j));
+                vertices.push_back(glm::vec3(upperBound, lowerBound + i, lowerBound + j));
+                //////////////////////////////////////////////////////////////////////////
+                vertices.push_back(glm::vec3(k + i,          lowerBound, k          + j));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, k          + j));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, lowerBound + j));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, lowerBound + j));
+                vertices.push_back(glm::vec3(k + i,          lowerBound, lowerBound + j));
+                vertices.push_back(glm::vec3(k + i,          lowerBound, k          + j));
+                //////////////////////////////////////////////////////////////////////////
+                vertices.push_back(glm::vec3(k + i,          upperBound, k          + j));
+                vertices.push_back(glm::vec3(lowerBound + i, upperBound, k          + j));
+                vertices.push_back(glm::vec3(lowerBound + i, upperBound, lowerBound + j));
+                vertices.push_back(glm::vec3(lowerBound + i, upperBound, lowerBound + j));
+                vertices.push_back(glm::vec3(k + i,          upperBound, lowerBound + j));
+                vertices.push_back(glm::vec3(k + i,          upperBound, k          + j));
+                //////////////////////////////////////////////////////////////////////////
+                vertices.push_back(glm::vec3(k + i,          k + j,          lowerBound));
+                vertices.push_back(glm::vec3(lowerBound + i, k + j,          lowerBound));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, lowerBound));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, lowerBound));
+                vertices.push_back(glm::vec3(k + i,          lowerBound + j, lowerBound));
+                vertices.push_back(glm::vec3(k + i,          k + j,          lowerBound));
+                //////////////////////////////////////////////////////////////////////////
+                vertices.push_back(glm::vec3(k + i,          k + j,          upperBound));
+                vertices.push_back(glm::vec3(lowerBound + i, k + j,          upperBound));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, upperBound));
+                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, upperBound));
+                vertices.push_back(glm::vec3(k + i,          lowerBound + j, upperBound));
+                vertices.push_back(glm::vec3(k + i,          k + j,          upperBound));
+                for (int l = 0; l < 36; ++l)
+                {
+                    indices[ii] = ii; ++ii;
+                }
             }
         }
 
@@ -103,8 +106,8 @@ namespace Achengine
 			{ ShaderDataType::Float3, "a_Normal" }
 		};
 
-        std::vector<glm::vec3> normals;
-        std::vector<std::pair<float, float>> texCoords;
+        std::vector<glm::vec3> normals(indices.size());
+        const std::vector<std::pair<float, float>> texCoords;
         Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }
 }

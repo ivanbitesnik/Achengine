@@ -12,8 +12,11 @@ namespace Achengine
     void UMesh::Initialize()
     {
         Renderer::AddShader(m_ShaderPath);
-        GenerateVertexArray();
-        SetUniforms();
+        if (!Renderer::GetVertexArray(GetShaderName()))
+        {
+            GenerateVertexArray();
+            SetUniforms();
+        }
     }
 
     std::string UMesh::GetShaderName() const

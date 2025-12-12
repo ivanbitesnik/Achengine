@@ -56,7 +56,7 @@ namespace Achengine
         static void AddIndexBufferToArray(const std::string& VertexArrayName, const std::vector<uint32_t>& Indices);
         static VertexArray* GetVertexArray(const std::string& VertexArrayName);
 
-        static std::vector<glm::vec3> GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t> indices);
+        static void GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices, std::vector<glm::vec3>& normals);
         static void GenerateVertexArray(const std::string& VertexId, const std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
              const std::vector<std::pair<float, float>>& texCoords, const std::vector<uint32_t>& indices, const BufferLayout& Layout);
 

@@ -116,9 +116,9 @@ namespace Achengine
 		return nullptr;
 	}
 
-	std::vector<glm::vec3> Renderer::GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t> indices)
+	void Renderer::GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices, std::vector<glm::vec3>& normals)
     {
-        std::vector<glm::vec3> normals(vertices.size());
+        normals.resize(indices.size());
         for (int i = 0; i < indices.size(); i += 3) 
 		{
             uint32_t tri[3] = { indices[i], indices[i + 1], indices[i + 2] };
@@ -128,13 +128,15 @@ namespace Achengine
             glm::vec3 ab = b - a, ac = c - a;
             glm::vec3 n = glm::normalize(glm::cross(ab, ac));
             for (int j = 0; j < 3; ++j)
-            normals[tri[j]] = normals[tri[j]] + n;
+			{
+				normals[tri[j]] = n;
+			}
         }
 
-        for (int i = 0; i < vertices.size(); ++i)
+        for (int i = 0; i < normals.size(); ++i)
+		{
             normals[i] = glm::normalize(normals[i]);
-
-		return normals;
+		}
     }
 
     void Renderer::GenerateVertexArray(const std::string& VertexId, const std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
@@ -142,7 +144,7 @@ namespace Achengine
     {
 		if (normals.size() == 0)
 		{
-			normals = GenerateNormals(vertices, indices);
+			GenerateNormals(vertices, indices, normals);
 		}
         std::vector<float> vertexArray;
         for (int i = 0; i < vertices.size(); ++i)
@@ -180,6 +182,14 @@ namespace Achengine
 		EditorCamera* Camera = (EditorCamera*)camera;
 		s_RenderData->CameraPosition = Camera->GetPosition();
 		s_RenderData->ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
+
+		if (Achengine::WorldActorCache* Cache = Achengine::WorldActorCache::Get())
+		{
+			for (Achengine::AActor* Actor : Cache->GetActorCache())
+			{
+				Actor->Draw();
+			}
+		}
 	}
 
 	void Renderer::EndScene()
@@ -215,9 +225,11 @@ namespace Achengine
 
 	void Renderer::DrawVertexArray(const std::string& VertexArrayName)
 	{
-		VertexArray* VertexArrayToDraw = GetVertexArray(VertexArrayName);
-		VertexArrayToDraw->Bind();
-		RenderCommand::DrawIndexed(VertexArrayToDraw);
+		if (VertexArray* VertexArrayToDraw = GetVertexArray(VertexArrayName))
+		{
+			VertexArrayToDraw->Bind();
+			RenderCommand::DrawIndexed(VertexArrayToDraw);
+		}
 	}
 
 	void Renderer::DrawMesh(UMesh* Mesh)
@@ -233,7 +245,7 @@ namespace Achengine
 		{
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
-
+		
 		if (shader) {
 			if (shader->HasUniform("u_Time"))
 			{

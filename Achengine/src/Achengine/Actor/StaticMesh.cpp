@@ -92,11 +92,6 @@ namespace Achengine
             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
         };
         
-        if (Renderer::GetVertexArray(GetShaderName()))
-        {
-            return;
-        }
-
         std::vector<glm::vec3> vertices;
         std::vector<glm::vec3> normals;
         std::vector<std::pair<float, float>> texCoords;
@@ -120,7 +115,7 @@ namespace Achengine
         }
 
         std::vector<uint32_t> indices;
-        for (int j = 0; j < vertices.size()*6; ++j) 
+        for (int j = 0; j < vertices.size(); ++j) 
         {
             indices.push_back(j);
         }
