@@ -34,12 +34,14 @@ namespace Achengine
 	{
 		if (vertexArray->GetIndexBuffer() != nullptr)
 		{
+			vertexArray->GetIndexBuffer()->Bind();
 			glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
 		}
 		else
 		{
 			for (const VertexBuffer* vb : vertexArray->GetVertexBuffers())
 			{
+				vb->Bind();
 				glDrawArrays(GL_TRIANGLES, 0, vb->GetSize());
 			}
 		}

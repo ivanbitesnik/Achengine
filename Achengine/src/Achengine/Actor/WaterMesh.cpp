@@ -43,70 +43,83 @@ namespace Achengine
         constexpr float upperBound = 1.0f;
         constexpr float lowerBound = upperBound * -1.0f;
         constexpr float vertexStep = 0.1f;
-        constexpr float k = lowerBound + vertexStep;
+        constexpr int cellCount = (int)((upperBound - lowerBound) / vertexStep);
 
-        std::vector<glm::vec3> vertices;
-        constexpr int indexCount = (upperBound - lowerBound) / vertexStep;
-        std::vector<uint32_t> indices(indexCount*indexCount * 36);
+        std::vector<Vector3> vertices;
+        std::vector<uint32_t> indices;
+        vertices.reserve(cellCount * cellCount * 36);
+        indices.reserve(cellCount * cellCount * 36);
         uint32_t ii = 0;
-        for (float i = 0.0f; i <= (upperBound - lowerBound); i += vertexStep)
+        for (int i = 0; i < cellCount; ++i)
         {
-            for (float j = 0.0f; j <= (upperBound - lowerBound); j += vertexStep)
+            const float y0 = lowerBound + i * vertexStep;
+            const float y1 = y0 + vertexStep;
+            for (int j = 0; j < cellCount; ++j)
             {
-                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, lowerBound + j));
-                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, k          + j));
-                vertices.push_back(glm::vec3(lowerBound, k + i,          k          + j));
-                vertices.push_back(glm::vec3(lowerBound, k + i,          k          + j));
-                vertices.push_back(glm::vec3(lowerBound, k + i,          lowerBound + j));
-                vertices.push_back(glm::vec3(lowerBound, lowerBound + i, lowerBound + j));
+                const float z0 = lowerBound + j * vertexStep;
+                const float z1 = z0 + vertexStep;
+
+                vertices.push_back(Vector3(lowerBound, y0, z0));
+                vertices.push_back(Vector3(lowerBound, y0, z1));
+                vertices.push_back(Vector3(lowerBound, y1, z1));
+                vertices.push_back(Vector3(lowerBound, y1, z1));
+                vertices.push_back(Vector3(lowerBound, y1, z0));
+                vertices.push_back(Vector3(lowerBound, y0, z0));
                 //////////////////////////////////////////////////////////////////////////
-                vertices.push_back(glm::vec3(upperBound, lowerBound + i, lowerBound + j));
-                vertices.push_back(glm::vec3(upperBound, lowerBound + i, k          + j));
-                vertices.push_back(glm::vec3(upperBound, k + i,          k          + j));
-                vertices.push_back(glm::vec3(upperBound, k + i,          k          + j));
-                vertices.push_back(glm::vec3(upperBound, k + i,          lowerBound + j));
-                vertices.push_back(glm::vec3(upperBound, lowerBound + i, lowerBound + j));
+                vertices.push_back(Vector3(upperBound, y0, z0));
+                vertices.push_back(Vector3(upperBound, y0, z1));
+                vertices.push_back(Vector3(upperBound, y1, z1));
+                vertices.push_back(Vector3(upperBound, y1, z1));
+                vertices.push_back(Vector3(upperBound, y1, z0));
+                vertices.push_back(Vector3(upperBound, y0, z0));
                 //////////////////////////////////////////////////////////////////////////
-                vertices.push_back(glm::vec3(k + i,          lowerBound, k          + j));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, k          + j));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, lowerBound + j));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound, lowerBound + j));
-                vertices.push_back(glm::vec3(k + i,          lowerBound, lowerBound + j));
-                vertices.push_back(glm::vec3(k + i,          lowerBound, k          + j));
+                vertices.push_back(Vector3(y1, lowerBound, z1));
+                vertices.push_back(Vector3(y0, lowerBound, z1));
+                vertices.push_back(Vector3(y0, lowerBound, z0));
+                vertices.push_back(Vector3(y0, lowerBound, z0));
+                vertices.push_back(Vector3(y1, lowerBound, z0));
+                vertices.push_back(Vector3(y1, lowerBound, z1));
+                ////////////////////////////////////////////////////////////////////////
+                vertices.push_back(Vector3(z1, upperBound, y1));
+                vertices.push_back(Vector3(z0, upperBound, y1));
+                vertices.push_back(Vector3(z0, upperBound, y0));
+                vertices.push_back(Vector3(z0, upperBound, y0));
+                vertices.push_back(Vector3(z1, upperBound, y0));
+                vertices.push_back(Vector3(z1, upperBound, y1));
+                ////////////////////////////////////////////////////////////////////////
+                vertices.push_back(Vector3(y1, z1, lowerBound));
+                vertices.push_back(Vector3(y0, z1, lowerBound));
+                vertices.push_back(Vector3(y0, z0, lowerBound));
+                vertices.push_back(Vector3(y0, z0, lowerBound));
+                vertices.push_back(Vector3(y1, z0, lowerBound));
+                vertices.push_back(Vector3(y1, z1, lowerBound));
                 //////////////////////////////////////////////////////////////////////////
-                vertices.push_back(glm::vec3(k + i,          upperBound, k          + j));
-                vertices.push_back(glm::vec3(lowerBound + i, upperBound, k          + j));
-                vertices.push_back(glm::vec3(lowerBound + i, upperBound, lowerBound + j));
-                vertices.push_back(glm::vec3(lowerBound + i, upperBound, lowerBound + j));
-                vertices.push_back(glm::vec3(k + i,          upperBound, lowerBound + j));
-                vertices.push_back(glm::vec3(k + i,          upperBound, k          + j));
-                //////////////////////////////////////////////////////////////////////////
-                vertices.push_back(glm::vec3(k + i,          k + j,          lowerBound));
-                vertices.push_back(glm::vec3(lowerBound + i, k + j,          lowerBound));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, lowerBound));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, lowerBound));
-                vertices.push_back(glm::vec3(k + i,          lowerBound + j, lowerBound));
-                vertices.push_back(glm::vec3(k + i,          k + j,          lowerBound));
-                //////////////////////////////////////////////////////////////////////////
-                vertices.push_back(glm::vec3(k + i,          k + j,          upperBound));
-                vertices.push_back(glm::vec3(lowerBound + i, k + j,          upperBound));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, upperBound));
-                vertices.push_back(glm::vec3(lowerBound + i, lowerBound + j, upperBound));
-                vertices.push_back(glm::vec3(k + i,          lowerBound + j, upperBound));
-                vertices.push_back(glm::vec3(k + i,          k + j,          upperBound));
+                vertices.push_back(Vector3(y1, z1, upperBound));
+                vertices.push_back(Vector3(y0, z1, upperBound));
+                vertices.push_back(Vector3(y0, z0, upperBound));
+                vertices.push_back(Vector3(y0, z0, upperBound));
+                vertices.push_back(Vector3(y1, z0, upperBound));
+                vertices.push_back(Vector3(y1, z1, upperBound));
                 for (int l = 0; l < 36; ++l)
                 {
-                    indices[ii] = ii; ++ii;
+                    indices.push_back(ii); ++ii;
                 }
             }
         }
 
         BufferLayout Layout = {
-			{ ShaderDataType::Float3, "a_Position" },
-			{ ShaderDataType::Float3, "a_Normal" }
+			{ ShaderDataType::Float3, "a_Position" }
 		};
 
-        std::vector<glm::vec3> normals(indices.size());
+        //for (const Vector3& ver : vertices)
+        //{
+        //    AActor* actor = WorldActorCache::SpawnActor<AActor>();
+        //    actor->SetMesh(new ULightMesh());
+        //    actor->SetActorLocation(ver * Vector3(200.0f, 20.0f, 200.0f));
+        //    actor->SetActorScale({0.5f, 0.5f, 0.5f});
+        //}
+
+        std::vector<Vector3> normals;
         const std::vector<std::pair<float, float>> texCoords;
         Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
     }

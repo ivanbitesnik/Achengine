@@ -3,7 +3,6 @@
 
 #include "imgui/imgui.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 static glm::vec3 ToTransform(glm::vec3 vec)
 {
@@ -47,7 +46,7 @@ void Sandbox3D::OnAttach()
 	Achengine::AActor* WaterActor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	Achengine::UWaterMesh* WaterMesh = new Achengine::UWaterMesh();
 	WaterActor->SetMesh(WaterMesh);
-	WaterActor->SetActorScale(ToTransform({ 100.0f, 100.0f, 20.0f}));
+	WaterActor->SetActorScale({ 200.0f, 20.0f, 200.0f});
 }
 
 void Sandbox3D::OnDetach()
@@ -75,9 +74,9 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 
 void Sandbox3D::OnImGuiRender()
 {
-	//ImGui::Begin("Settings");
-	//ImGui::ColorEdit4("Square Color", glm::value_ptr(m_SquareColor));
-	//ImGui::End();
+	ImGui::Begin("Settings");
+	ImGui::ColorEdit4("Square Color", m_SquareColor);
+	ImGui::End();
 }
 
 void Sandbox3D::OnEvent(Achengine::Event& event)

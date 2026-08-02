@@ -32,7 +32,9 @@ namespace Achengine
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
+        // Multi-viewport is currently unstable with our Linux window/input plumbing.
+        // Keep it disabled until platform-window callback/context ownership is fully unified.
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         //io.ConfigViewportsNoAutoMerge = true;
         //io.ConfigViewportsNoTaskBarIcon = true;
 

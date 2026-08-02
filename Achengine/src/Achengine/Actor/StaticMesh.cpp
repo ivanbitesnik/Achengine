@@ -92,21 +92,23 @@ namespace Achengine
             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
         };
         
-        std::vector<glm::vec3> vertices;
-        std::vector<glm::vec3> normals;
+        std::vector<Vector3> vertices;
+        std::vector<Vector3> normals;
         std::vector<std::pair<float, float>> texCoords;
-        glm::vec3 currentVertex;
+        Vector3 currentVertex;
         std::pair<float, float> currentTexCoord;
-        for (int i = 0; i < sizeof(texturedCubeWithNormalsVertexArray); i += 8)
+        constexpr uint32_t stride = 8;
+        const uint32_t floatCount = sizeof(texturedCubeWithNormalsVertexArray) / sizeof(texturedCubeWithNormalsVertexArray[0]);
+        for (uint32_t i = 0; i + (stride - 1) < floatCount; i += stride)
         {
-            currentVertex.x = texturedCubeWithNormalsVertexArray[i];
-            currentVertex.y = texturedCubeWithNormalsVertexArray[i+1];
-            currentVertex.z = texturedCubeWithNormalsVertexArray[i+2];
+            currentVertex.X = texturedCubeWithNormalsVertexArray[i];
+            currentVertex.Y = texturedCubeWithNormalsVertexArray[i+1];
+            currentVertex.Z = texturedCubeWithNormalsVertexArray[i+2];
             vertices.push_back(currentVertex);
             
-            currentVertex.x = texturedCubeWithNormalsVertexArray[i+3];
-            currentVertex.y = texturedCubeWithNormalsVertexArray[i+4];
-            currentVertex.z = texturedCubeWithNormalsVertexArray[i+5];
+            currentVertex.X = texturedCubeWithNormalsVertexArray[i+3];
+            currentVertex.Y = texturedCubeWithNormalsVertexArray[i+4];
+            currentVertex.Z = texturedCubeWithNormalsVertexArray[i+5];
             normals.push_back(currentVertex);
             
             currentTexCoord.first = texturedCubeWithNormalsVertexArray[i+6];
@@ -115,7 +117,7 @@ namespace Achengine
         }
 
         std::vector<uint32_t> indices;
-        for (int j = 0; j < vertices.size(); ++j) 
+        for (uint32_t j = 0; j < vertices.size(); ++j)
         {
             indices.push_back(j);
         }

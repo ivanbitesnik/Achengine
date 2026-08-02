@@ -2,6 +2,24 @@
 
 namespace Achengine
 {
+    struct Vector3
+    {
+        Vector3() {}
+        Vector3(float X, float Y, float Z) : X(X), Y(Y), Z(Z) {} 
+        float X;
+        float Y;
+        float Z;
+
+        operator glm::vec3() const { return glm::vec3(X, Y, Z); }
+        Vector3& operator=(const glm::vec3& other)
+        {
+            X = other.x;
+            Y = other.y;
+            Z = other.z;
+            return *this;
+        }
+    };
+
     float clamp(float min, float value, float max);
     std::string format(const std::string &fmt, ...);
     double getTime();

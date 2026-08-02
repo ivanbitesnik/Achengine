@@ -48,7 +48,6 @@ namespace Achengine
 		const std::string& ShaderName = GetObjectNameFromFilePath(ShaderPath);
 		if (s_RenderData->GetShader(ShaderName))
 		{
-			//ACHENGINE_CORE_WARN("Shader was already added! Shader name: {0}", ShaderName);
 			return nullptr;
 		}
 		
@@ -73,7 +72,7 @@ namespace Achengine
 	VertexArray* Renderer::AddVertexArray(const std::string& VertexArrayName, const std::vector<float>& VertexCoords, const BufferLayout& BufferLayout)
 	{
 		VertexArray* NewVertexArray = VertexArray::Create();
-		VertexBuffer* VertexBuffer = VertexBuffer::Create(VertexCoords.size(), &VertexCoords[0]);
+		VertexBuffer* VertexBuffer = VertexBuffer::Create((uint32_t)(VertexCoords.size() * sizeof(float)), VertexCoords.data());
 		VertexBuffer->SetLayout(BufferLayout);
 		NewVertexArray->AddVertexBuffer(VertexBuffer);
 		
@@ -84,26 +83,26 @@ namespace Achengine
 	template<unsigned int N>
 	void Renderer::AddIndexBufferToArray(const std::string& VertexArrayName, uint32_t (&Indices)[N])
 	{
-		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(sizeof(Indices) / sizeof(uint32_t), Indices);
+		IndexBuffer* indexBuffer = IndexBuffer::Create(N, Indices);
 		VertexArray* VA = GetVertexArray(VertexArrayName);
 		if (!VA)
 		{
 			return;
 		}
 
-		VA->SetIndexBuffer(squareIndexBuffer);
+		VA->SetIndexBuffer(indexBuffer);
 	}
 
 	void Renderer::AddIndexBufferToArray(const std::string& VertexArrayName, const std::vector<uint32_t>& Indices)
 	{
-		IndexBuffer* squareIndexBuffer = IndexBuffer::Create(Indices.size() / sizeof(uint32_t), &Indices[0]);
+		IndexBuffer* indexBuffer = IndexBuffer::Create(Indices.size(), Indices.data());
 		VertexArray* VA = GetVertexArray(VertexArrayName);
 		if (!VA)
 		{
 			return;
 		}
 
-		VA->SetIndexBuffer(squareIndexBuffer);
+		VA->SetIndexBuffer(indexBuffer);
 	}
 
 	VertexArray* Renderer::GetVertexArray(const std::string& VertexArrayName)
@@ -116,7 +115,7 @@ namespace Achengine
 		return nullptr;
 	}
 
-	void Renderer::GenerateNormals(const std::vector<glm::vec3>& vertices, const std::vector<uint32_t>& indices, std::vector<glm::vec3>& normals)
+	void Renderer::GenerateNormals(const std::vector<Vector3>& vertices, const std::vector<uint32_t>& indices, std::vector<Vector3>& normals)
     {
         normals.resize(indices.size());
         for (int i = 0; i < indices.size(); i += 3) 
@@ -135,30 +134,31 @@ namespace Achengine
 
         for (int i = 0; i < normals.size(); ++i)
 		{
-            normals[i] = glm::normalize(normals[i]);
+			glm::vec3 n = normals[i];
+            normals[i] = glm::normalize(n);
 		}
     }
 
-    void Renderer::GenerateVertexArray(const std::string& VertexId, const std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    void Renderer::GenerateVertexArray(const std::string& VertexId, const std::vector<Vector3>& vertices, std::vector<Vector3>& normals,
 		 const std::vector<std::pair<float, float>>& texCoords, const std::vector<uint32_t>& indices, const BufferLayout& Layout)
     {
 		if (normals.size() == 0)
 		{
-			GenerateNormals(vertices, indices, normals);
+			//GenerateNormals(vertices, indices, normals);
 		}
         std::vector<float> vertexArray;
         for (int i = 0; i < vertices.size(); ++i)
         {
-            vertexArray.push_back(vertices[i].x);
-            vertexArray.push_back(vertices[i].y);
-            vertexArray.push_back(vertices[i].z);
-            if (normals.size() > 0)
+            vertexArray.push_back(vertices[i].X);
+            vertexArray.push_back(vertices[i].Y);
+            vertexArray.push_back(vertices[i].Z);
+            if (normals.size() > i)
             {
-                vertexArray.push_back(normals[i].x);
-                vertexArray.push_back(normals[i].y);
-                vertexArray.push_back(normals[i].z);
+                vertexArray.push_back(normals[i].X);
+                vertexArray.push_back(normals[i].Y);
+                vertexArray.push_back(normals[i].Z);
             }
-            if (texCoords.size() > 0)
+            if (texCoords.size() > i)
             {
                 vertexArray.push_back(texCoords[i].first);
                 vertexArray.push_back(texCoords[i].second);
@@ -236,7 +236,6 @@ namespace Achengine
 	{
 		const std::string& ShaderName = Mesh->GetShaderName();
 		Shader* shader = s_RenderData->GetShader(ShaderName);
-		glPushAttrib(GL_TEXTURE_BIT | GL_ENABLE_BIT);
 		if (Mesh->GetTexture())
 		{
 			Mesh->GetTexture()->Bind();

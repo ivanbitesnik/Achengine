@@ -15,7 +15,7 @@ namespace Achengine
 
 	OpenGLContext::~OpenGLContext()
 	{
-		delete m_WindowHandle;
+		// Window lifetime is owned by the platform window (GLFW), not by the GL context.
 	}
 
 	void OpenGLContext::Init()

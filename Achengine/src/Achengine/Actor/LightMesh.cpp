@@ -85,24 +85,26 @@ namespace Achengine
 			-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f,
     	};
 
-        std::vector<glm::vec3> vertices;
-        std::vector<glm::vec3> normals;
-        glm::vec3 currentVertex;
-        for (int i = 0; i < sizeof(cubeWithNormalsVertexArray); i += 6)
+        std::vector<Vector3> vertices;
+        std::vector<Vector3> normals;
+        Vector3 currentVertex;
+		constexpr uint32_t stride = 6;
+		const uint32_t floatCount = sizeof(cubeWithNormalsVertexArray) / sizeof(cubeWithNormalsVertexArray[0]);
+		for (uint32_t i = 0; i + (stride - 1) < floatCount; i += stride)
         {
-			currentVertex.x = cubeWithNormalsVertexArray[i];
-            currentVertex.y = cubeWithNormalsVertexArray[i+1];
-            currentVertex.z = cubeWithNormalsVertexArray[i+2];
+			currentVertex.X = cubeWithNormalsVertexArray[i];
+            currentVertex.Y = cubeWithNormalsVertexArray[i+1];
+            currentVertex.Z = cubeWithNormalsVertexArray[i+2];
             vertices.push_back(currentVertex);
             
-            currentVertex.x = cubeWithNormalsVertexArray[i+3];
-            currentVertex.y = cubeWithNormalsVertexArray[i+4];
-            currentVertex.z = cubeWithNormalsVertexArray[i+5];
+            currentVertex.X = cubeWithNormalsVertexArray[i+3];
+            currentVertex.Y = cubeWithNormalsVertexArray[i+4];
+            currentVertex.Z = cubeWithNormalsVertexArray[i+5];
             normals.push_back(currentVertex);
         }
 		
         std::vector<uint32_t> indices;
-        for (int j = 0; j < vertices.size()*6; ++j) 
+		for (uint32_t j = 0; j < vertices.size(); ++j)
         {
 			indices.push_back(j);
         }

@@ -22,5 +22,5 @@ private:
 
 	float pos, lightColorRate, angle = 0.0f;
 
-	glm::vec4 m_SquareColor = { 0.2f, 0.3f, 0.8f, 1.0f };
+	float m_SquareColor[4] = { 0.2f, 0.3f, 0.8f, 1.0f };
 };

@@ -39,8 +39,6 @@ namespace Achengine
         va_end(args);
         string str(buffer);
         delete [] buffer;
-
-        va_end(args);
         return str;
     }
 

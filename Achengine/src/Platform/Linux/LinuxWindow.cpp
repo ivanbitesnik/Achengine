@@ -6,9 +6,12 @@
 #include "Achengine/Events/MouseEvent.h"
 #include "Platform/OpenGL/OpenGLContext.h"
 
+#include <unordered_map>
+
 namespace Achengine
 {
 	static bool s_GLFWInitialized = false;
+	static std::unordered_map<GLFWwindow*, LinuxWindow*> s_WindowInstanceMap;
 
 	static void GLFWErrorCallback(int error, const char* description)
 	{
@@ -55,12 +58,24 @@ namespace Achengine
 		m_Context->Init();
 
 		glfwSetWindowUserPointer(m_Window, &m_Data);
+		s_WindowInstanceMap[m_Window] = this;
 		SetVSync(true);
 
 		// Set GLFW callbacks
 		glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			LinuxWindow* instance = instanceIt->second;
+			WindowData& data = instance->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 			data.Width = width;
 			data.Height = height;
 
@@ -70,14 +85,34 @@ namespace Achengine
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			WindowData& data = instanceIt->second->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 			WindowCloseEvent event;
 			data.EventCallback(event);
 		});
 
 		glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			WindowData& data = instanceIt->second->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 
 			switch (action)
 			{
@@ -104,7 +139,17 @@ namespace Achengine
 
 		glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int keycode)
 		{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				auto instanceIt = s_WindowInstanceMap.find(window);
+				if (instanceIt == s_WindowInstanceMap.end())
+				{
+					return;
+				}
+
+				WindowData& data = instanceIt->second->m_Data;
+				if (!data.EventCallback)
+				{
+					return;
+				}
 
 				KeyTypedEvent event(keycode);
 				data.EventCallback(event);
@@ -112,7 +157,17 @@ namespace Achengine
 
 		glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int modes)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			WindowData& data = instanceIt->second->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 
 			switch (action)
 			{
@@ -133,7 +188,17 @@ namespace Achengine
 
 		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			WindowData& data = instanceIt->second->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 
 			MouseScrolledEvent event((float)xOffset, (float)yOffset);
 			data.EventCallback(event);
@@ -141,7 +206,17 @@ namespace Achengine
 
 		glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double xPos, double yPos)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			auto instanceIt = s_WindowInstanceMap.find(window);
+			if (instanceIt == s_WindowInstanceMap.end())
+			{
+				return;
+			}
+
+			WindowData& data = instanceIt->second->m_Data;
+			if (!data.EventCallback)
+			{
+				return;
+			}
 
 			MouseMovedEvent event((float)xPos, (float)yPos);
 			data.EventCallback(event);
@@ -150,7 +225,13 @@ namespace Achengine
 
 	void LinuxWindow::ShutDown()
 	{
+		s_WindowInstanceMap.erase(m_Window);
+
+		delete m_Context;
+		m_Context = nullptr;
+
 		glfwDestroyWindow(m_Window);
+		m_Window = nullptr;
 	}
 
 	void LinuxWindow::OnUpdate()
