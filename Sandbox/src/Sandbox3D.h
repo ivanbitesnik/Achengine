@@ -2,6 +2,9 @@
 
 #include "Achengine.h"
 
+#include <unordered_set>
+#include <vector>
+
 class Sandbox3D : public Achengine::Layer
 {
 public:
@@ -16,11 +19,37 @@ public:
 	virtual void OnEvent(Achengine::Event& event) override;
 
 private:
+	enum class EGizmoMode
+	{
+		Translate = 0,
+		Rotate = 1,
+		Scale = 2
+	};
+
+	enum class EGizmoSpace
+	{
+		World = 0,
+		Local = 1
+	};
+
 	Achengine::EditorCameraController* m_CameraController;
 
 	std::map<std::string, Achengine::Texture*> m_Textures;
 
-	float pos, lightColorRate, angle = 0.0f;
-
-	float m_SquareColor[4] = { 0.2f, 0.3f, 0.8f, 1.0f };
+	Achengine::AActor* m_ModelActor = nullptr;
+	Achengine::UModelMesh* m_ModelMesh = nullptr;
+	Achengine::AActor* m_ActiveActor = nullptr;
+	std::unordered_set<Achengine::AActor*> m_SelectedActors;
+	glm::vec3 m_ModelScale = {6.0f, 6.0f, 6.0f};
+	char m_ModelPathBuffer[512] = {};
+	float m_AssetBrowserHeight = 300.0f;
+	float m_OutlinerWidth = 360.0f;
+	EGizmoMode m_GizmoMode = EGizmoMode::Translate;
+	EGizmoSpace m_GizmoSpace = EGizmoSpace::World;
+	bool m_UseGizmoSnapping = false;
+	float m_TranslateSnapStep = 1.0f;
+	float m_RotateSnapStep = 15.0f;
+	float m_ScaleSnapStep = 0.1f;
+	int m_GizmoActiveAxis = -1;
+	bool m_GizmoDragging = false;
 };

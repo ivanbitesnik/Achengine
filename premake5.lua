@@ -1,6 +1,12 @@
 workspace "Achengine"
 	architecture "x64"
 
+	newoption
+	{
+		trigger = "without-assimp",
+		description = "Disable Assimp-based model importing (.fbx, .obj, etc.)"
+	}
+
 	configurations
 	{
 		"Debug",
@@ -69,6 +75,11 @@ project "Achengine"
 		"ImGui",
 		"opengl32.lib"
 	}
+
+	if not _OPTIONS["without-assimp"] then
+		defines { "ACHENGINE_ENABLE_ASSIMP" }
+		links { "assimp" }
+	end
 
 	filter "system:windows"
 		staticruntime "On"
@@ -143,6 +154,10 @@ project "Sandbox"
 		"Glad",
 		"ImGui"
 	}
+
+	if not _OPTIONS["without-assimp"] then
+		links { "assimp" }
+	end
 
 	filter "system:windows"
 		staticruntime "on"

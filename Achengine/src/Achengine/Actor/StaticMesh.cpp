@@ -16,6 +16,10 @@ namespace Achengine
 #else
 	    m_ShaderPath = "assets/shaders/Cube.glsl";
 #endif
+        m_Bounds.LocalCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+        m_Bounds.LocalExtents = glm::vec3(1.0f, 1.0f, 1.0f);
+        m_Bounds.LocalSphereRadius = glm::length(m_Bounds.LocalExtents);
+        m_Bounds.IsValid = true;
         Initialize();
     }
 
@@ -30,12 +34,20 @@ namespace Achengine
             Renderer::SetShaderUniform(ShaderName, "u_Material.diffuse", Material->diffuse);
             Renderer::SetShaderUniform(ShaderName, "u_Material.specular", Material->specular);
             Renderer::SetShaderUniform(ShaderName, "u_Material.shininess", Material->shininess);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.normal", 2);
+            Renderer::SetShaderUniform(ShaderName, "u_HasDiffuseMap", 0);
+            Renderer::SetShaderUniform(ShaderName, "u_HasSpecularMap", 0);
+            Renderer::SetShaderUniform(ShaderName, "u_HasNormalMap", 0);
         }
         else if (Texture* texture = GetTexture())
         {
             Renderer::SetShaderUniform(ShaderName, "u_Material.diffuse", 0);
             Renderer::SetShaderUniform(ShaderName, "u_Material.specular", 1);
+            Renderer::SetShaderUniform(ShaderName, "u_Material.normal", 2);
             Renderer::SetShaderUniform(ShaderName, "u_Material.shininess", 256.0f);
+		    Renderer::SetShaderUniform(ShaderName, "u_HasDiffuseMap", 1);
+		    Renderer::SetShaderUniform(ShaderName, "u_HasSpecularMap", GetSpecular() ? 1 : 0);
+		    Renderer::SetShaderUniform(ShaderName, "u_HasNormalMap", 0);
 		    texture->Bind();
             if (Texture* Specular = GetSpecular())
             {
@@ -128,6 +140,6 @@ namespace Achengine
 			{ ShaderDataType::Float2, "a_TexCoords"}
 		};
 
-        Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
+        Renderer::GenerateVertexArray(GetVertexArrayName(), vertices, normals, texCoords, indices, Layout);
     }
 }

@@ -5,6 +5,7 @@
 #include "Renderer2D.h"
 #include "Achengine/Renderer/EditorCamera.h"
 #include "Achengine/Actor/Actor.h"
+#include "Achengine/Actor/Mesh.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -182,9 +183,18 @@ namespace Achengine
 		EditorCamera* Camera = (EditorCamera*)camera;
 		s_RenderData->CameraPosition = Camera->GetPosition();
 		s_RenderData->ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
+		ClearSceneLights();
 
 		if (Achengine::WorldActorCache* Cache = Achengine::WorldActorCache::Get())
 		{
+			for (Achengine::AActor* Actor : Cache->GetActorCache())
+			{
+				if (UMesh* Mesh = Actor->GetMesh())
+				{
+					Mesh->SubmitLighting();
+				}
+			}
+
 			for (Achengine::AActor* Actor : Cache->GetActorCache())
 			{
 				Actor->Draw();
@@ -194,6 +204,30 @@ namespace Achengine
 
 	void Renderer::EndScene()
 	{
+	}
+
+	void Renderer::AddSceneLight(const glm::vec3& position, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular,
+		float constant, float linear, float quadratic)
+	{
+		if (s_RenderData->SceneLights.size() >= MaxSceneLights)
+		{
+			return;
+		}
+
+		FSceneLight light;
+		light.Position = position;
+		light.Ambient = ambient;
+		light.Diffuse = diffuse;
+		light.Specular = specular;
+		light.Constant = constant;
+		light.Linear = linear;
+		light.Quadratic = quadratic;
+		s_RenderData->SceneLights.push_back(light);
+	}
+
+	void Renderer::ClearSceneLights()
+	{
+		s_RenderData->SceneLights.clear();
 	}
 
 	void Renderer::DrawQuad(const glm::vec2& position, const glm::vec2& size, const Texture2D* texture, const float angle, const glm::vec3& rot, const glm::vec4& tint)
@@ -246,6 +280,20 @@ namespace Achengine
 		}
 		
 		if (shader) {
+			const int lightCount = (int)s_RenderData->SceneLights.size();
+			SetShaderUniform(ShaderName, "u_LightCount", lightCount);
+			for (int i = 0; i < lightCount; ++i)
+			{
+				const FSceneLight& light = s_RenderData->SceneLights[i];
+				SetShaderUniform(ShaderName, format("u_Lights[%d].position", i), light.Position);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].ambient", i), light.Ambient);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].diffuse", i), light.Diffuse);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].specular", i), light.Specular);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].constant", i), light.Constant);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].linear", i), light.Linear);
+				SetShaderUniform(ShaderName, format("u_Lights[%d].quadratic", i), light.Quadratic);
+			}
+
 			if (shader->HasUniform("u_Time"))
 			{
 				SetShaderUniform(ShaderName, "u_Time", (float)getTime());
@@ -263,7 +311,7 @@ namespace Achengine
 			shader->Bind();
 		}
 
-		DrawVertexArray(ShaderName);
+		Mesh->DrawGeometry();
 	}
 
 	void Renderer::SetShaderUniform(const std::string& ShaderName, const std::string& UniformName, int value)

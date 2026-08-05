@@ -17,25 +17,38 @@ namespace Achengine
 #else
 		m_ShaderPath = "assets/shaders/LightSource.glsl";
 #endif
+		m_Bounds.LocalCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+		m_Bounds.LocalExtents = glm::vec3(1.0f, 1.0f, 1.0f);
+		m_Bounds.LocalSphereRadius = glm::length(m_Bounds.LocalExtents);
+		m_Bounds.IsValid = true;
 		Initialize();
 	}
 
 	void ULightMesh::SetUniforms()
 	{
-		// TODO: remove awful dep
-		UStaticMesh* temp = new UStaticMesh();
-
-		const std::string& StaticMeshShaderName = GetObjectNameFromFilePath(temp->m_ShaderPath);
-		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.ambient", GetLightSource()->ambient);
-		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
-		Renderer::SetShaderUniform(StaticMeshShaderName, "u_Light.specular", GetLightSource()->specular);
-		delete temp;
-		
 		const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
 		Renderer::SetShaderUniform(ShaderName, "u_Light.color", GetLightSource()->color);
 		Renderer::SetShaderUniform(ShaderName, "u_Light.ambient", GetLightSource()->ambient);
 		Renderer::SetShaderUniform(ShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
 		Renderer::SetShaderUniform(ShaderName, "u_Light.specular", GetLightSource()->specular);
+	}
+
+	void ULightMesh::SubmitLighting()
+	{
+		if (!GetOwner() || !GetLightSource())
+		{
+			return;
+		}
+
+		Renderer::AddSceneLight(
+			GetOwner()->GetActorLocation(),
+			GetLightSource()->ambient,
+			GetLightSource()->diffuse,
+			GetLightSource()->specular,
+			GetLightSource()->constant,
+			GetLightSource()->linear,
+			GetLightSource()->quadratic
+		);
 	}
 
 	void ULightMesh::GenerateVertexArray()
@@ -115,6 +128,17 @@ namespace Achengine
 		};
 		
 		std::vector<std::pair<float, float>> texCoords;
-        Renderer::GenerateVertexArray(GetShaderName(), vertices, normals, texCoords, indices, Layout);
+		Renderer::GenerateVertexArray(GetVertexArrayName(), vertices, normals, texCoords, indices, Layout);
+	}
+
+	void ULightMesh::DrawMesh()
+	{
+		const std::string& ShaderName = GetObjectNameFromFilePath(m_ShaderPath);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.color", GetLightSource()->color);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.ambient", GetLightSource()->ambient);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.diffuse", GetLightSource()->diffuse);
+		Renderer::SetShaderUniform(ShaderName, "u_Light.specular", GetLightSource()->specular);
+	
+		UMesh::DrawMesh();
 	}
 }

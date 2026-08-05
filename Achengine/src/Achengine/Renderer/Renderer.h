@@ -10,10 +10,22 @@ namespace Achengine
 {
     class AActor;
 
+    struct FSceneLight
+    {
+        glm::vec3 Position = glm::vec3(0.0f);
+        glm::vec3 Ambient = glm::vec3(0.2f);
+        glm::vec3 Diffuse = glm::vec3(0.5f);
+        glm::vec3 Specular = glm::vec3(1.0f);
+        float Constant = 1.0f;
+        float Linear = 0.014f;
+        float Quadratic = 0.0007f;
+    };
+
     struct RendererStorage
 	{
         glm::vec3 CameraPosition;
         glm::mat4 ViewProjectionMatrix;
+		std::vector<FSceneLight> SceneLights;
 		Texture2D* WhiteTexture;
         std::map<std::string, VertexArray*> VertexArrays;
         std::vector<Shader*> Shaders;
@@ -64,6 +76,11 @@ namespace Achengine
         
 		static void BeginScene(Camera* camera);
 		static void EndScene();
+
+		static constexpr uint32_t MaxSceneLights = 16;
+        static void AddSceneLight(const glm::vec3& position, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular,
+            float constant = 1.0f, float linear = 0.014f, float quadratic = 0.0007f);
+        static void ClearSceneLights();
         
 		// Primitives
 		static void DrawQuad(const glm::vec2& position, const glm::vec2& size, const Texture2D* texture, const float angle = 0.0f, const glm::vec3& rot = glm::vec3(1.0f), const glm::vec4& tint = glm::vec4(1.0f));

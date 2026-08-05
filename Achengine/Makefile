@@ -17,14 +17,14 @@ ifeq ($(config),debug)
   OBJDIR = ../bin-int/Debug-linux-x86_64/Achengine
   PCH = src/Achengine/Achenginepch.h
   GCH = $(OBJDIR)/$(notdir $(PCH)).gch
-  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_DEBUG
+  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_ENABLE_ASSIMP -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_DEBUG
   INCLUDES += -Isrc -Isrc/Achengine -Ivendor/spdlog/include -Ivendor/GLFW/include -Ivendor/Glad/include -Ivendor/imgui -Ivendor/glm -Ivendor/stb_image
   FORCE_INCLUDE += -include $(OBJDIR)/$(notdir $(PCH))
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -fPIC -g
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -fPIC -g -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a -lopengl32.lib
+  LIBS += vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a -lopengl32.lib -lassimp
   LDDEPS += vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
   LINKCMD = $(AR) -rcs "$@" $(OBJECTS)
@@ -46,14 +46,14 @@ ifeq ($(config),release)
   OBJDIR = ../bin-int/Release-linux-x86_64/Achengine
   PCH = src/Achengine/Achenginepch.h
   GCH = $(OBJDIR)/$(notdir $(PCH)).gch
-  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_RELEASE
+  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_ENABLE_ASSIMP -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_RELEASE
   INCLUDES += -Isrc -Isrc/Achengine -Ivendor/spdlog/include -Ivendor/GLFW/include -Ivendor/Glad/include -Ivendor/imgui -Ivendor/glm -Ivendor/stb_image
   FORCE_INCLUDE += -include $(OBJDIR)/$(notdir $(PCH))
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a -lopengl32.lib
+  LIBS += vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a -lopengl32.lib -lassimp
   LDDEPS += vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
   LINKCMD = $(AR) -rcs "$@" $(OBJECTS)
@@ -75,14 +75,14 @@ ifeq ($(config),dist)
   OBJDIR = ../bin-int/Dist-linux-x86_64/Achengine
   PCH = src/Achengine/Achenginepch.h
   GCH = $(OBJDIR)/$(notdir $(PCH)).gch
-  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_DIST
+  DEFINES += -D_CRT_SECURE_NO_WARNINGS -DACHENGINE_ENABLE_ASSIMP -DACHENGINE_PLATFORM_LINUX -DACHENGINE_BUILD_DLL -DGLFW_INCLUDE_NONE -DACHENGINE_DIST
   INCLUDES += -Isrc -Isrc/Achengine -Ivendor/spdlog/include -Ivendor/GLFW/include -Ivendor/Glad/include -Ivendor/imgui -Ivendor/glm -Ivendor/stb_image
   FORCE_INCLUDE += -include $(OBJDIR)/$(notdir $(PCH))
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a -lopengl32.lib
+  LIBS += vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a -lopengl32.lib -lassimp
   LDDEPS += vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
   LINKCMD = $(AR) -rcs "$@" $(OBJECTS)
@@ -102,6 +102,7 @@ OBJECTS := \
 	$(OBJDIR)/Actor.o \
 	$(OBJDIR)/LightMesh.o \
 	$(OBJDIR)/Mesh.o \
+	$(OBJDIR)/ModelMesh.o \
 	$(OBJDIR)/StaticMesh.o \
 	$(OBJDIR)/WaterMesh.o \
 	$(OBJDIR)/WorldActorCache.o \
@@ -204,6 +205,9 @@ $(OBJDIR)/LightMesh.o: src/Achengine/Actor/LightMesh.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Mesh.o: src/Achengine/Actor/Mesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/ModelMesh.o: src/Achengine/Actor/ModelMesh.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/StaticMesh.o: src/Achengine/Actor/StaticMesh.cpp

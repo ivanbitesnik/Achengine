@@ -22,7 +22,7 @@ ifeq ($(config),debug)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -fPIC -g
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -fPIC -g -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/Debug-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a
+  LIBS += ../bin/Debug-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a -lassimp
   LDDEPS += ../bin/Debug-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Debug-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Debug-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Debug-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
@@ -49,7 +49,7 @@ ifeq ($(config),release)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/Release-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a
+  LIBS += ../bin/Release-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a -lassimp
   LDDEPS += ../bin/Release-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Release-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Release-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Release-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
@@ -76,7 +76,7 @@ ifeq ($(config),dist)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -fPIC -std=c++14
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/Dist-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a
+  LIBS += ../bin/Dist-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a -lassimp
   LDDEPS += ../bin/Dist-linux-x86_64/Achengine/libAchengine.a ../Achengine/vendor/GLFW/bin/Dist-linux-x86_64/GLFW/libGLFW.a ../Achengine/vendor/Glad/bin/Dist-linux-x86_64/Glad/libGlad.a ../Achengine/vendor/imgui/bin/Dist-linux-x86_64/ImGui/libImGui.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
