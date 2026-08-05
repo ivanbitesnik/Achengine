@@ -679,6 +679,8 @@ void Sandbox3D::OnImGuiRender()
 
 	ImGui::End();
 
+	const ImVec2 renderMin(viewport->WorkPos.x, viewport->WorkPos.y);
+	const ImVec2 renderMax(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
 	const ImVec2 sceneMin(viewport->WorkPos.x, viewport->WorkPos.y);
 	const ImVec2 sceneMax(viewport->WorkPos.x + assetWidth, viewport->WorkPos.y + viewport->WorkSize.y - m_AssetBrowserHeight);
 
@@ -725,10 +727,10 @@ void Sandbox3D::OnImGuiRender()
 		}
 
 		glm::vec3 ndc = glm::vec3(clip) / clip.w;
-		const float width = sceneMax.x - sceneMin.x;
-		const float height = sceneMax.y - sceneMin.y;
-		out.x = sceneMin.x + (ndc.x * 0.5f + 0.5f) * width;
-		out.y = sceneMin.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+		const float width = renderMax.x - renderMin.x;
+		const float height = renderMax.y - renderMin.y;
+		out.x = renderMin.x + (ndc.x * 0.5f + 0.5f) * width;
+		out.y = renderMin.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
 		return true;
 	};
 
@@ -769,31 +771,24 @@ void Sandbox3D::OnImGuiRender()
 		return false;
 	};
 
-	auto IntersectRayOBB = [](const glm::vec3& rayOrigin, const glm::vec3& rayDir, const glm::vec3& center,
-		const glm::vec3& axisX, const glm::vec3& axisY, const glm::vec3& axisZ,
-		const glm::vec3& extents, float& outT) {
-		const glm::mat3 orientation(axisX, axisY, axisZ);
-		const glm::mat3 invOrientation = glm::transpose(orientation);
-
-		const glm::vec3 localOrigin = invOrientation * (rayOrigin - center);
-		const glm::vec3 localDir = invOrientation * rayDir;
-
+	auto IntersectRayAABB = [](const glm::vec3& rayOrigin, const glm::vec3& rayDir,
+		const glm::vec3& minBounds, const glm::vec3& maxBounds, float& outT) {
 		float tMin = 0.0f;
 		float tMax = 10000000.0f;
 		for (int i = 0; i < 3; ++i)
 		{
-			if (fabsf(localDir[i]) < 0.000001f)
+			if (fabsf(rayDir[i]) < 0.000001f)
 			{
-				if (localOrigin[i] < -extents[i] || localOrigin[i] > extents[i])
+				if (rayOrigin[i] < minBounds[i] || rayOrigin[i] > maxBounds[i])
 				{
 					return false;
 				}
 				continue;
 			}
 
-			const float invDir = 1.0f / localDir[i];
-			float t1 = (-extents[i] - localOrigin[i]) * invDir;
-			float t2 = (extents[i] - localOrigin[i]) * invDir;
+			const float invDir = 1.0f / rayDir[i];
+			float t1 = (minBounds[i] - rayOrigin[i]) * invDir;
+			float t2 = (maxBounds[i] - rayOrigin[i]) * invDir;
 			if (t1 > t2)
 			{
 				std::swap(t1, t2);
@@ -830,8 +825,9 @@ void Sandbox3D::OnImGuiRender()
 
 	if (m_ActiveActor && !m_SelectedActors.empty())
 	{
-		// Keep the gizmo centered on the selected actor every frame.
-		actorPos = m_ActiveActor->GetActorLocation();
+		// Keep the gizmo centered on the selected actor bounds every frame.
+		const Achengine::FActorBounds activeBounds = m_ActiveActor->GetBounds();
+		actorPos = activeBounds.IsValid ? activeBounds.Center : m_ActiveActor->GetActorLocation();
 		gizmoWorldSize = glm::max(1.0f, glm::distance(camera->GetPosition(), actorPos) * 0.2f);
 
 		Achengine::FActorRotation actorRot = m_ActiveActor->GetActorRotation();
@@ -884,15 +880,15 @@ void Sandbox3D::OnImGuiRender()
 	const bool mouseInScene = IsPointInRect(mousePos, sceneMin, sceneMax);
 
 	auto PickActorAtMouse = [&](const ImVec2& mouse) -> Achengine::AActor* {
-		const float width = sceneMax.x - sceneMin.x;
-		const float height = sceneMax.y - sceneMin.y;
+		const float width = renderMax.x - renderMin.x;
+		const float height = renderMax.y - renderMin.y;
 		if (width <= 1.0f || height <= 1.0f)
 		{
 			return nullptr;
 		}
 
-		const float x = ((mouse.x - sceneMin.x) / width) * 2.0f - 1.0f;
-		const float y = 1.0f - ((mouse.y - sceneMin.y) / height) * 2.0f;
+		const float x = ((mouse.x - renderMin.x) / width) * 2.0f - 1.0f;
+		const float y = 1.0f - ((mouse.y - renderMin.y) / height) * 2.0f;
 
 		glm::vec4 nearClip = glm::vec4(x, y, -1.0f, 1.0f);
 		glm::vec4 farClip = glm::vec4(x, y, 1.0f, 1.0f);
@@ -905,7 +901,7 @@ void Sandbox3D::OnImGuiRender()
 
 		glm::vec3 nearWorld = glm::vec3(nearWorld4) / nearWorld4.w;
 		glm::vec3 farWorld = glm::vec3(farWorld4) / farWorld4.w;
-		glm::vec3 rayOrigin = nearWorld;
+		glm::vec3 rayOrigin = camera->GetPosition();
 		glm::vec3 rayDir = glm::normalize(farWorld - nearWorld);
 
 		Achengine::AActor* bestActor = nullptr;
@@ -926,37 +922,43 @@ void Sandbox3D::OnImGuiRender()
 					continue;
 				}
 
-					const float broadPhaseRadius = glm::max(0.1f, bounds.SphereRadius);
-					float broadPhaseT = 0.0f;
-					if (!IntersectRaySphere(rayOrigin, rayDir, bounds.Center, broadPhaseRadius, broadPhaseT))
-					{
-						continue;
-					}
-
-					const Achengine::FMeshBounds meshBounds = actor->GetMesh()->GetBounds();
-					if (!meshBounds.IsValid)
-					{
-						continue;
-					}
-
-					glm::vec3 rotationAxis = actor->GetActorRotation().RotationAxis;
-					if (glm::length(rotationAxis) < 0.0001f)
-					{
-						rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
-					}
-					const glm::quat actorRotation = glm::angleAxis(glm::radians(actor->GetActorRotation().Angle), glm::normalize(rotationAxis));
-					const glm::vec3 actorScale = glm::abs(actor->GetActorScale());
-
-					const glm::vec3 obbCenter = actor->GetActorLocation() + glm::rotate(actorRotation, meshBounds.LocalCenter * actorScale);
-					const glm::vec3 obbExtents = glm::max(meshBounds.LocalExtents * actorScale, glm::vec3(0.01f));
-					const glm::vec3 axisX = glm::normalize(glm::rotate(actorRotation, glm::vec3(1.0f, 0.0f, 0.0f)));
-					const glm::vec3 axisY = glm::normalize(glm::rotate(actorRotation, glm::vec3(0.0f, 1.0f, 0.0f)));
-					const glm::vec3 axisZ = glm::normalize(glm::rotate(actorRotation, glm::vec3(0.0f, 0.0f, 1.0f)));
-
-					float obbHitT = 0.0f;
-					if (IntersectRayOBB(rayOrigin, rayDir, obbCenter, axisX, axisY, axisZ, obbExtents, obbHitT) && obbHitT < bestT)
+				const float broadPhaseRadius = glm::max(0.1f, bounds.SphereRadius);
+				float broadPhaseT = 0.0f;
+				if (!IntersectRaySphere(rayOrigin, rayDir, bounds.Center, broadPhaseRadius, broadPhaseT))
 				{
-						bestT = obbHitT;
+					continue;
+				}
+
+				const Achengine::FMeshBounds meshBounds = actor->GetMesh()->GetBounds();
+				if (!meshBounds.IsValid)
+				{
+					continue;
+				}
+
+				const glm::mat4 actorTransform = actor->GetActorTransform();
+				const glm::mat4 inverseActorTransform = glm::inverse(actorTransform);
+				const glm::vec3 localRayOrigin = glm::vec3(inverseActorTransform * glm::vec4(rayOrigin, 1.0f));
+				const glm::vec3 localRayDir = glm::vec3(inverseActorTransform * glm::vec4(rayDir, 0.0f));
+
+				const glm::vec3 localMin = meshBounds.LocalCenter - meshBounds.LocalExtents;
+				const glm::vec3 localMax = meshBounds.LocalCenter + meshBounds.LocalExtents;
+				float localHitT = 0.0f;
+				if (!IntersectRayAABB(localRayOrigin, localRayDir, localMin, localMax, localHitT))
+				{
+					continue;
+				}
+
+				const glm::vec3 localHitPoint = localRayOrigin + localRayDir * localHitT;
+				const glm::vec3 worldHitPoint = glm::vec3(actorTransform * glm::vec4(localHitPoint, 1.0f));
+				const float worldHitT = glm::dot(worldHitPoint - rayOrigin, rayDir);
+				if (worldHitT < 0.0f)
+				{
+					continue;
+				}
+
+				if (worldHitT < bestT)
+				{
+					bestT = worldHitT;
 					bestActor = actor;
 				}
 			}
