@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Achengine/Actor/StaticMesh.h"
+#include "Achengine/Actor/Mesh.h"
 
 namespace Achengine
 {

@@ -118,7 +118,7 @@ namespace Achengine
         //for (const Vector3& ver : vertices)
         //{
         //    AActor* actor = WorldActorCache::SpawnActor<AActor>();
-        //    actor->SetMesh(new ULightMesh());
+        //    actor->AddActorComponent(new ULightComponent());
         //    actor->SetActorLocation(ver * Vector3(200.0f, 20.0f, 200.0f));
         //    actor->SetActorScale({0.5f, 0.5f, 0.5f});
         //}

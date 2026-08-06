@@ -19,6 +19,10 @@ public:
 	virtual void OnEvent(Achengine::Event& event) override;
 
 private:
+	bool SaveMapToFile(const std::string& filePath);
+	bool LoadMapFromFile(const std::string& filePath);
+	void SpawnDefaultScene();
+
 	enum class EGizmoMode
 	{
 		Translate = 0,
@@ -37,11 +41,14 @@ private:
 	std::map<std::string, Achengine::Texture*> m_Textures;
 
 	Achengine::AActor* m_ModelActor = nullptr;
-	Achengine::UModelMesh* m_ModelMesh = nullptr;
+	Achengine::UMesh* m_ModelMesh = nullptr;
 	Achengine::AActor* m_ActiveActor = nullptr;
 	std::unordered_set<Achengine::AActor*> m_SelectedActors;
 	glm::vec3 m_ModelScale = {6.0f, 6.0f, 6.0f};
 	char m_ModelPathBuffer[512] = {};
+	char m_MapPathBuffer[512] = {};
+	std::string m_MapStatus;
+	float m_TopMapPanelHeight = 92.0f;
 	float m_AssetBrowserHeight = 300.0f;
 	float m_OutlinerWidth = 360.0f;
 	EGizmoMode m_GizmoMode = EGizmoMode::Translate;

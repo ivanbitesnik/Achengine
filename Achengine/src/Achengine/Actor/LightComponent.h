@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Achengine/Actor/StaticMesh.h"
+#include "Achengine/Actor/ActorComponent.h"
 
 namespace Achengine
 {
@@ -21,19 +21,16 @@ namespace Achengine
             float quadratic = 0.0007f;
     };
 
-    class ULightMesh : public UMesh
+    class ULightComponent : public UActorComponent
     {
         public:
-            ULightMesh();
+            ULightComponent();
+            virtual ~ULightComponent();
 
             void SetLightSource(FLightSource* NewLightSource) { m_LightSource = NewLightSource; }
             FLightSource* GetLightSource() const { return m_LightSource; }
-            
-            virtual void SubmitLighting() override;
-            virtual void DrawMesh() override;
-        protected:
-            virtual void SetUniforms() override;
-            virtual void GenerateVertexArray() override;
+
+            void SubmitLighting() const;
         private:
             FLightSource* m_LightSource = nullptr;
     };

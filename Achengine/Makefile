@@ -100,10 +100,8 @@ endif
 OBJECTS := \
 	$(OBJDIR)/Achenginepch.o \
 	$(OBJDIR)/Actor.o \
-	$(OBJDIR)/LightMesh.o \
+	$(OBJDIR)/LightComponent.o \
 	$(OBJDIR)/Mesh.o \
-	$(OBJDIR)/ModelMesh.o \
-	$(OBJDIR)/StaticMesh.o \
 	$(OBJDIR)/WaterMesh.o \
 	$(OBJDIR)/WorldActorCache.o \
 	$(OBJDIR)/Application.o \
@@ -201,16 +199,10 @@ $(OBJDIR)/Achenginepch.o: src/Achengine/Achenginepch.cpp
 $(OBJDIR)/Actor.o: src/Achengine/Actor/Actor.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/LightMesh.o: src/Achengine/Actor/LightMesh.cpp
+$(OBJDIR)/LightComponent.o: src/Achengine/Actor/LightComponent.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Mesh.o: src/Achengine/Actor/Mesh.cpp
-	@echo $(notdir $<)
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/ModelMesh.o: src/Achengine/Actor/ModelMesh.cpp
-	@echo $(notdir $<)
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/StaticMesh.o: src/Achengine/Actor/StaticMesh.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/WaterMesh.o: src/Achengine/Actor/WaterMesh.cpp

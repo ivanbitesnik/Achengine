@@ -3,7 +3,6 @@
 
 #include "Achengine/Actor/Mesh.h"
 #include "Achengine/Actor/WorldActorCache.h"
-#include "Achengine/Actor/StaticMesh.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>

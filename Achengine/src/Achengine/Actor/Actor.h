@@ -2,11 +2,10 @@
 
 #include "Achengine/Core/Core.h"
 #include "Achengine/Actor/ActorComponent.h"
+#include "Achengine/Actor/Mesh.h"
 
 namespace Achengine
 {
-    class UMesh;
-
     struct FActorBounds
     {
         glm::vec3 Center = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -36,7 +35,7 @@ namespace Achengine
             {
                 for (UActorComponent* Comp : ActorComponents)
                 {
-                    if (T* CastedComp = (T*)Comp)
+                    if (T* CastedComp = dynamic_cast<T*>(Comp))
                     {
                         return CastedComp;
                     }

@@ -14,6 +14,7 @@ namespace Achengine
 
             inline static WorldActorCache* Get() { return s_Instance; }
             const std::unordered_set<AActor*>& GetActorCache() const { return ActorCache; }
+            void ClearActorCache();
             
             template<typename T>
             static AActor* SpawnActor()

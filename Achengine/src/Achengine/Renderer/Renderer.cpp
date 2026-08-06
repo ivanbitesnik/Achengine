@@ -6,6 +6,7 @@
 #include "Achengine/Renderer/EditorCamera.h"
 #include "Achengine/Actor/Actor.h"
 #include "Achengine/Actor/Mesh.h"
+#include "Achengine/Actor/LightComponent.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -189,6 +190,11 @@ namespace Achengine
 		{
 			for (Achengine::AActor* Actor : Cache->GetActorCache())
 			{
+				if (ULightComponent* LightComponent = Actor->GetComponentByClass<ULightComponent>())
+				{
+					LightComponent->SubmitLighting();
+				}
+
 				if (UMesh* Mesh = Actor->GetMesh())
 				{
 					Mesh->SubmitLighting();

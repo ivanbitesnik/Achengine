@@ -12,6 +12,7 @@ namespace Achengine
         friend class AActor;
         public:
             UActorComponent() {}
+            virtual ~UActorComponent() = default;
             
             AActor* GetOwner() const { return Owner; }
         protected:

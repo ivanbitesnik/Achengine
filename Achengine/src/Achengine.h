@@ -39,6 +39,6 @@
 
 // ---- Actors ----------------------------
 #include "Achengine/Actor/WorldActorCache.h"
-#include "Achengine/Actor/ModelMesh.h"
-#include "Achengine/Actor/LightMesh.h"
+#include "Achengine/Actor/Mesh.h"
+#include "Achengine/Actor/LightComponent.h"
 #include "Achengine/Actor/WaterMesh.h"

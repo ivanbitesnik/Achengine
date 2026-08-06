@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "actors": [
+    {
+      "name": "Box_1",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [0.000000, 100.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    },
+    {
+      "name": "Box_3",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [-40.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    },
+    {
+      "name": "Box_4",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [0.000000, 60.000000, 40.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    },
+    {
+      "name": "Box_5",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [0.000000, 60.000000, -40.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    },
+    {
+      "name": "MainLight",
+      "meshType": "light",
+      "location": [0.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [5.000000, 5.000000, 5.000000],
+      "light": {
+        "color": [1.000000, 1.000000, 1.000000],
+        "ambient": [0.500000, 0.500000, 0.500000],
+        "diffuse": [0.500000, 0.500000, 0.500000],
+        "specular": [0.500000, 0.500000, 0.500000],
+        "constant": 1,
+        "linear": 0.014,
+        "quadratic": 0.0007
+      }
+    },
+    {
+      "name": "Box_0",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [0.000000, 20.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    },
+    {
+      "name": "Box_2",
+      "meshType": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
+      "location": [40.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000]
+    }
+  ]
+}
