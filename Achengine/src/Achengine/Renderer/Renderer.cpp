@@ -11,10 +11,110 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <glad/glad.h>
+#include <algorithm>
 
 namespace Achengine
 {
 	static RendererStorage* s_RenderData;
+
+	static void ClearMeshBatches()
+	{
+		s_RenderData->MeshBatches.clear();
+		s_RenderData->MeshBatchIndices.clear();
+	}
+
+	static void QueueMeshForBatch(UMesh* mesh)
+	{
+		if (!mesh)
+		{
+			return;
+		}
+
+		s_RenderData->CurrentFrameStats.MeshesQueued++;
+
+		const std::string shaderName = mesh->GetShaderName();
+		auto batchIt = s_RenderData->MeshBatchIndices.find(shaderName);
+		if (batchIt == s_RenderData->MeshBatchIndices.end())
+		{
+			RendererStorage::FMeshBatch batch;
+			batch.ShaderName = shaderName;
+			batch.Meshes.push_back(mesh);
+			s_RenderData->MeshBatches.push_back(batch);
+			s_RenderData->MeshBatchIndices[shaderName] = s_RenderData->MeshBatches.size() - 1;
+			return;
+		}
+
+		s_RenderData->MeshBatches[batchIt->second].Meshes.push_back(mesh);
+	}
+
+	static void ApplySceneLightUniforms(Shader* shader)
+	{
+		const int lightCount = (int)s_RenderData->SceneLights.size();
+		shader->SetInt("u_LightCount", lightCount);
+		for (int i = 0; i < lightCount; ++i)
+		{
+			const FSceneLight& light = s_RenderData->SceneLights[i];
+			shader->SetFloat3(format("u_Lights[%d].position", i), light.Position);
+			shader->SetFloat3(format("u_Lights[%d].ambient", i), light.Ambient);
+			shader->SetFloat3(format("u_Lights[%d].diffuse", i), light.Diffuse);
+			shader->SetFloat3(format("u_Lights[%d].specular", i), light.Specular);
+			shader->SetFloat(format("u_Lights[%d].constant", i), light.Constant);
+			shader->SetFloat(format("u_Lights[%d].linear", i), light.Linear);
+			shader->SetFloat(format("u_Lights[%d].quadratic", i), light.Quadratic);
+		}
+
+		if (shader->HasUniform("u_Time"))
+		{
+			shader->SetFloat("u_Time", (float)getTime());
+		}
+		if (shader->HasUniform("u_ViewPosition"))
+		{
+			shader->SetFloat3("u_ViewPosition", s_RenderData->CameraPosition);
+		}
+		shader->SetMat4("u_ViewProjection", s_RenderData->ViewProjectionMatrix);
+	}
+
+	static void FlushMeshBatches()
+	{
+		for (RendererStorage::FMeshBatch& batch : s_RenderData->MeshBatches)
+		{
+			std::stable_sort(batch.Meshes.begin(), batch.Meshes.end(), [](const UMesh* lhs, const UMesh* rhs)
+			{
+				if (!lhs || !rhs)
+				{
+					return lhs != nullptr;
+				}
+
+				return lhs->GetBatchSortKey() < rhs->GetBatchSortKey();
+			});
+
+			Shader* shader = s_RenderData->GetShader(batch.ShaderName);
+			if (!shader)
+			{
+				continue;
+			}
+
+			s_RenderData->CurrentFrameStats.MeshBatches++;
+
+			shader->Bind();
+			ApplySceneLightUniforms(shader);
+
+			for (UMesh* mesh : batch.Meshes)
+			{
+				if (!mesh)
+				{
+					continue;
+				}
+
+				if (shader->HasUniform("u_Transform"))
+				{
+					shader->SetMat4("u_Transform", mesh->GetOwner()->GetActorTransform());
+				}
+
+				mesh->DrawGeometry();
+			}
+		}
+	}
 
 	void Renderer::Init()
 	{
@@ -181,10 +281,13 @@ namespace Achengine
 
 	void Renderer::BeginScene(Camera* camera)
 	{
-		EditorCamera* Camera = (EditorCamera*)camera;
-		s_RenderData->CameraPosition = Camera->GetPosition();
-		s_RenderData->ViewProjectionMatrix = (Camera->GetViewProjection() * Camera->GetViewMatrix());
+		ResetStats();
+
+		s_RenderData->CameraPosition = camera->GetPosition();
+		s_RenderData->ViewProjectionMatrix = (camera->GetViewProjection() * camera->GetViewMatrix());
+		s_RenderData->IsSceneOpen = true;
 		ClearSceneLights();
+		ClearMeshBatches();
 
 		if (Achengine::WorldActorCache* Cache = Achengine::WorldActorCache::Get())
 		{
@@ -193,11 +296,6 @@ namespace Achengine
 				if (ULightComponent* LightComponent = Actor->GetComponentByClass<ULightComponent>())
 				{
 					LightComponent->SubmitLighting();
-				}
-
-				if (UMesh* Mesh = Actor->GetMesh())
-				{
-					Mesh->SubmitLighting();
 				}
 			}
 
@@ -210,6 +308,20 @@ namespace Achengine
 
 	void Renderer::EndScene()
 	{
+		FlushMeshBatches();
+		ClearMeshBatches();
+		s_RenderData->IsSceneOpen = false;
+		s_RenderData->LastFrameStats = s_RenderData->CurrentFrameStats;
+	}
+
+	void Renderer::ResetStats()
+	{
+		s_RenderData->CurrentFrameStats = FRendererStats{};
+	}
+
+	FRendererStats Renderer::GetStats()
+	{
+		return s_RenderData->LastFrameStats;
 	}
 
 	void Renderer::AddSceneLight(const glm::vec3& position, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular,
@@ -261,6 +373,7 @@ namespace Achengine
 		VertexArray* QuadVertexArray = GetVertexArray("QuadVertexArray");
 		QuadVertexArray->Bind();
 		RenderCommand::DrawIndexed(QuadVertexArray);
+		s_RenderData->CurrentFrameStats.DrawCalls++;
 	}
 
 	void Renderer::DrawVertexArray(const std::string& VertexArrayName)
@@ -269,11 +382,18 @@ namespace Achengine
 		{
 			VertexArrayToDraw->Bind();
 			RenderCommand::DrawIndexed(VertexArrayToDraw);
+			s_RenderData->CurrentFrameStats.DrawCalls++;
 		}
 	}
 
 	void Renderer::DrawMesh(UMesh* Mesh)
 	{
+		if (s_RenderData->IsSceneOpen)
+		{
+			QueueMeshForBatch(Mesh);
+			return;
+		}
+
 		const std::string& ShaderName = Mesh->GetShaderName();
 		Shader* shader = s_RenderData->GetShader(ShaderName);
 		if (Mesh->GetTexture())

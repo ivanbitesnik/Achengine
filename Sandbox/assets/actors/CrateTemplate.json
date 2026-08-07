@@ -1,0 +1,9 @@
+{
+  "templateName": "CrateTemplate",
+  "components": [
+    {
+      "type": "mesh",
+      "modelPath": "../models/Cube.fbx"
+    }
+  ]
+}

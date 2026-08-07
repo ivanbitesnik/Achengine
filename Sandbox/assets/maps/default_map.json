@@ -4,38 +4,65 @@
     {
       "name": "Box_1",
       "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
       "location": [0.000000, 100.000000, 0.000000],
       "rotationAxis": [0.577350, 0.577350, 0.577350],
       "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
-    },
-    {
-      "name": "Box_3",
-      "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
-      "location": [-40.000000, 60.000000, 0.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
-    },
-    {
-      "name": "Box_4",
-      "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
-      "location": [0.000000, 60.000000, 40.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
     },
     {
       "name": "Box_5",
       "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
       "location": [0.000000, 60.000000, -40.000000],
       "rotationAxis": [0.577350, 0.577350, 0.577350],
       "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
+    },
+    {
+      "name": "CrateTemplate",
+      "meshType": "mesh",
+      "location": [-79.616280, -0.000015, -21.302536],
+      "rotationAxis": [1.000000, 0.000000, 0.000000],
+      "rotationAngle": 0,
+      "scale": [1000.000000, 1.000000, 1000.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/actors/../models/Cube.fbx"
+    },
+    {
+      "name": "Box_4",
+      "meshType": "mesh",
+      "location": [0.000000, 60.000000, 40.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
+    },
+    {
+      "name": "Box_3",
+      "meshType": "mesh",
+      "location": [-40.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
+    },
+    {
+      "name": "Box_0",
+      "meshType": "mesh",
+      "location": [0.000000, 20.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
+    },
+    {
+      "name": "Box_2",
+      "meshType": "mesh",
+      "location": [40.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx"
     },
     {
       "name": "MainLight",
@@ -53,24 +80,6 @@
         "linear": 0.014,
         "quadratic": 0.0007
       }
-    },
-    {
-      "name": "Box_0",
-      "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
-      "location": [0.000000, 20.000000, 0.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
-    },
-    {
-      "name": "Box_2",
-      "meshType": "mesh",
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Cube.fbx",
-      "location": [40.000000, 60.000000, 0.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000]
     }
   ]
 }

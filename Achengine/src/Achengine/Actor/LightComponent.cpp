@@ -17,6 +17,11 @@ namespace Achengine
 		m_LightSource = nullptr;
 	}
 
+	void ULightComponent::Tick(float DeltaTime)
+	{
+		(void)DeltaTime;
+	}
+
 	void ULightComponent::SubmitLighting() const
 	{
 		if (!GetOwner() || !GetLightSource())

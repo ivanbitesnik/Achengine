@@ -70,8 +70,8 @@ namespace Achengine
             Texture* GetNormal() const { return m_Normal; }
             virtual FMeshBounds GetBounds() const { return m_Bounds; }
             bool ReloadModel(const std::string& modelPath);
-
-            virtual void SubmitLighting() {}
+            uint64_t GetBatchSortKey() const;
+            
             virtual void DrawMesh();
             virtual void DrawGeometry();
         protected:

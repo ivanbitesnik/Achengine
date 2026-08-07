@@ -415,6 +415,22 @@ namespace Achengine
         return GetObjectNameFromFilePath(m_ShaderPath);
     }
 
+    uint64_t UMesh::GetBatchSortKey() const
+    {
+        uint64_t key = std::hash<std::string>{}(m_ModelPath);
+
+        auto hashCombine = [](uint64_t seed, uint64_t value)
+        {
+            return seed ^ (value + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2));
+        };
+
+        key = hashCombine(key, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Texture)));
+        key = hashCombine(key, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Specular)));
+        key = hashCombine(key, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Normal)));
+
+        return key;
+    }
+
     void UMesh::DrawMesh()
     {
         Renderer::DrawMesh(this);

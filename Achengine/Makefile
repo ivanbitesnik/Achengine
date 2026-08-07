@@ -147,6 +147,7 @@ endif
 
 $(TARGET): $(GCH) ${CUSTOMFILES} $(OBJECTS) $(LDDEPS) $(RESOURCES) | $(TARGETDIR)
 	@echo Linking Achengine
+	$(SILENT) rm -f "$(TARGET)"
 	$(SILENT) $(LINKCMD)
 	$(POSTBUILDCMDS)
 

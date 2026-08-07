@@ -21,8 +21,42 @@ namespace Achengine
         }
     }
 
+    AActor::~AActor()
+    {
+        for (UActorComponent* component : ActorComponents)
+        {
+            delete component;
+        }
+
+        ActorComponents.clear();
+    }
+
+    void AActor::Tick(float DeltaTime)
+    {
+        for (UActorComponent* Comp : ActorComponents)
+        {
+            if (!Comp)
+            {
+                continue;
+            }
+
+            if (!UActorComponent::IsPointerAlive(Comp))
+            {
+                ACHENGINE_CORE_WARN("Skipping stale component pointer on actor '{0}'", GetActorName().c_str());
+                continue;
+            }
+
+            Comp->Tick(DeltaTime);
+        }
+    }
+
     void AActor::AddActorComponent(UActorComponent* NewComponent)
     {
+        if (!NewComponent)
+        {
+            return;
+        }
+
         NewComponent->SetOwner(this);
         ActorComponents.push_back(NewComponent);
     }
@@ -36,7 +70,18 @@ namespace Achengine
         }
         else
         {
-            CurrentMesh = NewMesh;
+            for (size_t i = 0; i < ActorComponents.size(); ++i)
+            {
+                if (ActorComponents[i] == CurrentMesh)
+                {
+                    NewMesh->SetOwner(this);
+                    ActorComponents[i] = NewMesh;
+                    delete CurrentMesh;
+                    return;
+                }
+            }
+
+            AddActorComponent(NewMesh);
         }
     }
 

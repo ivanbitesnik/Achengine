@@ -1,0 +1,17 @@
+{
+  "templateName": "LightTemplate",
+  "components": [
+    {
+      "type": "light",
+      "light": {
+        "color": [1.0, 0.95, 0.85],
+        "ambient": [0.15, 0.14, 0.12],
+        "diffuse": [0.9, 0.8, 0.7],
+        "specular": [1.0, 0.95, 0.9],
+        "constant": 1.0,
+        "linear": 0.022,
+        "quadratic": 0.0019
+      }
+    }
+  ]
+}

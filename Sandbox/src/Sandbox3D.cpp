@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <random>
 #include <unordered_map>
 #include <vector>
 
@@ -279,6 +280,52 @@ static std::string ToDisplayRelativePath(const std::string& path, const std::str
 
 namespace
 {
+	class FSandboxPlayerController : public Achengine::APlayerController
+	{
+	public:
+		void Tick(float DeltaTime) override
+		{
+			Achengine::APlayer* player = GetPossessedPlayer();
+			if (player)
+			{
+				glm::vec3 moveDirection(0.0f, 0.0f, 0.0f);
+				if (IsKeyDown(ACHENGINE_KEY_W)) { moveDirection.z -= 1.0f; }
+				if (IsKeyDown(ACHENGINE_KEY_S)) { moveDirection.z += 1.0f; }
+				if (IsKeyDown(ACHENGINE_KEY_A)) { moveDirection.x -= 1.0f; }
+				if (IsKeyDown(ACHENGINE_KEY_D)) { moveDirection.x += 1.0f; }
+				if (IsKeyDown(ACHENGINE_KEY_Q)) { moveDirection.y += 1.0f; }
+				if (IsKeyDown(ACHENGINE_KEY_E)) { moveDirection.y -= 1.0f; }
+
+				if (glm::length(moveDirection) > 0.0001f)
+				{
+					moveDirection = glm::normalize(moveDirection);
+					player->SetActorLocation(player->GetActorLocation() + moveDirection * m_MoveSpeed * DeltaTime);
+				}
+
+				if (Achengine::USpringArmComponent* springArm = player->GetSpringArm())
+				{
+					if (IsMouseButtonDown(ACHENGINE_MOUSE_BUTTON_RIGHT))
+					{
+						m_YawDegrees += GetMouseDelta().x * m_MouseLookSensitivity;
+						m_PitchDegrees -= GetMouseDelta().y * m_MouseLookSensitivity;
+						m_PitchDegrees = glm::clamp(m_PitchDegrees, -80.0f, 20.0f);
+					}
+
+					springArm->SetRelativeRotation(glm::vec3(1.0f, 0.0f, 0.0f), m_PitchDegrees);
+					player->SetActorRotation(glm::vec3(0.0f, 1.0f, 0.0f), m_YawDegrees);
+				}
+			}
+
+			APlayerController::Tick(DeltaTime);
+		}
+
+	private:
+		float m_MoveSpeed = 10.0f;
+		float m_MouseLookSensitivity = 0.1f;
+		float m_YawDegrees = 0.0f;
+		float m_PitchDegrees = -20.0f;
+	};
+
 	struct FJsonValue
 	{
 		enum class EType
@@ -686,6 +733,203 @@ namespace
 		outValue = glm::vec3((float)field.ArrayValue[0].NumberValue, (float)field.ArrayValue[1].NumberValue, (float)field.ArrayValue[2].NumberValue);
 		return true;
 	}
+
+	enum class EActorTemplateLoadResult
+	{
+		Spawned,
+		NotTemplate,
+		Failed
+	};
+
+	static std::string ResolvePathRelativeToFile(const std::string& sourceFilePath, const std::string& candidatePath)
+	{
+		if (candidatePath.empty())
+		{
+			return candidatePath;
+		}
+
+		if (candidatePath[0] == '/' || candidatePath[0] == '\\')
+		{
+			return candidatePath;
+		}
+
+		if (candidatePath.size() > 1 && candidatePath[1] == ':')
+		{
+			return candidatePath;
+		}
+
+		std::string baseDir = GetDirectoryFromPath(sourceFilePath);
+		if (baseDir.empty() || baseDir == ".")
+		{
+			return candidatePath;
+		}
+
+		if (baseDir.back() != '/' && baseDir.back() != '\\')
+		{
+			baseDir += '/';
+		}
+
+		return baseDir + candidatePath;
+	}
+
+	static bool ParseJsonFile(const std::string& filePath, FJsonValue& outRoot, std::string& outError)
+	{
+		std::ifstream in(filePath);
+		if (!in.is_open())
+		{
+			outError = "Failed to open JSON file";
+			return false;
+		}
+
+		std::stringstream buffer;
+		buffer << in.rdbuf();
+		in.close();
+
+		std::string jsonText = buffer.str();
+		if (jsonText.size() >= 3 &&
+			(unsigned char)jsonText[0] == 0xEF &&
+			(unsigned char)jsonText[1] == 0xBB &&
+			(unsigned char)jsonText[2] == 0xBF)
+		{
+			jsonText = jsonText.substr(3);
+		}
+
+		FJsonParser parser(jsonText);
+		if (!parser.Parse(outRoot) || outRoot.Type != FJsonValue::EType::Object)
+		{
+			outError = "JSON parse failed";
+			return false;
+		}
+
+		return true;
+	}
+
+	static EActorTemplateLoadResult SpawnActorTemplateFromJson(const std::string& filePath, const glm::vec3& dropLocation, std::string& outStatus)
+	{
+		FJsonValue root;
+		std::string parseError;
+		if (!ParseJsonFile(filePath, root, parseError))
+		{
+			outStatus = Achengine::format("Template JSON error: %s", parseError.c_str());
+			return EActorTemplateLoadResult::Failed;
+		}
+
+		std::string templateName;
+		FJsonValue componentsValue;
+		if (!JsonReadStringField(root, "templateName", templateName) ||
+			!JsonReadObjectField(root, "components", componentsValue) ||
+			componentsValue.Type != FJsonValue::EType::Array)
+		{
+			return EActorTemplateLoadResult::NotTemplate;
+		}
+
+		bool spawnAsPlayerStart = false;
+		for (const FJsonValue& componentValue : componentsValue.ArrayValue)
+		{
+			if (componentValue.Type != FJsonValue::EType::Object)
+			{
+				continue;
+			}
+
+			std::string componentType;
+			if (JsonReadStringField(componentValue, "type", componentType) && componentType == "playerStart")
+			{
+				spawnAsPlayerStart = true;
+				break;
+			}
+		}
+
+		Achengine::AActor* actor = spawnAsPlayerStart
+			? static_cast<Achengine::AActor*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayerStart>())
+			: Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
+
+		if (!templateName.empty())
+		{
+			actor->SetActorName(templateName);
+		}
+
+		glm::vec3 localOffset(0.0f);
+		glm::vec3 rotationAxis(1.0f, 0.0f, 0.0f);
+		float rotationAngle = 0.0f;
+		glm::vec3 scale(1.0f);
+
+		for (const FJsonValue& componentValue : componentsValue.ArrayValue)
+		{
+			if (componentValue.Type != FJsonValue::EType::Object)
+			{
+				continue;
+			}
+
+			std::string componentType;
+			if (!JsonReadStringField(componentValue, "type", componentType))
+			{
+				continue;
+			}
+
+			if (componentType == "transform")
+			{
+				JsonReadVec3Field(componentValue, "location", localOffset);
+				JsonReadVec3Field(componentValue, "rotationAxis", rotationAxis);
+				JsonReadNumberField(componentValue, "rotationAngle", rotationAngle);
+				JsonReadVec3Field(componentValue, "scale", scale);
+			}
+			else if (componentType == "mesh")
+			{
+				std::string modelPath;
+				JsonReadStringField(componentValue, "modelPath", modelPath);
+				if (!modelPath.empty())
+				{
+					modelPath = ResolvePathRelativeToFile(filePath, modelPath);
+				}
+
+				if (modelPath.empty() || !FileExists(modelPath))
+				{
+					modelPath = GetDefaultCubeModelPath();
+				}
+
+				if (FileExists(modelPath))
+				{
+					actor->SetMesh(new Achengine::UMesh(modelPath));
+				}
+			}
+			else if (componentType == "water")
+			{
+				actor->SetMesh(new Achengine::UWaterMesh());
+			}
+			else if (componentType == "light")
+			{
+				Achengine::ULightComponent* lightComponent = new Achengine::ULightComponent();
+				FJsonValue lightValue;
+				if (JsonReadObjectField(componentValue, "light", lightValue) && lightValue.Type == FJsonValue::EType::Object)
+				{
+					if (Achengine::FLightSource* ls = lightComponent->GetLightSource())
+					{
+						JsonReadVec3Field(lightValue, "color", ls->color);
+						JsonReadVec3Field(lightValue, "ambient", ls->ambient);
+						JsonReadVec3Field(lightValue, "diffuse", ls->diffuse);
+						JsonReadVec3Field(lightValue, "specular", ls->specular);
+						JsonReadNumberField(lightValue, "constant", ls->constant);
+						JsonReadNumberField(lightValue, "linear", ls->linear);
+						JsonReadNumberField(lightValue, "quadratic", ls->quadratic);
+					}
+				}
+
+				actor->AddActorComponent(lightComponent);
+			}
+		}
+
+		if (glm::length(rotationAxis) < 0.0001f)
+		{
+			rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+		}
+
+		actor->SetActorLocation(dropLocation + localOffset);
+		actor->SetActorRotation(glm::normalize(rotationAxis), rotationAngle);
+		actor->SetActorScale(scale);
+
+		outStatus = Achengine::format("Spawned template '%s'", templateName.empty() ? "Unnamed" : templateName.c_str());
+		return EActorTemplateLoadResult::Spawned;
+	}
 }
 
 Sandbox3D::Sandbox3D()
@@ -696,15 +940,12 @@ Sandbox3D::Sandbox3D()
 
 Sandbox3D::~Sandbox3D()
 {
+	delete m_PlayerController;
 	delete m_CameraController;
 }
 
 void Sandbox3D::OnAttach()
 {
-	m_Textures.insert({"Acheto", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/Acheto.png")});
-	m_Textures.insert({"Box", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box.png")});
-	m_Textures.insert({"BoxSpecular", Achengine::Texture2D::Create("/home/acheto/Desktop/projects/Achengine/Sandbox/assets/textures/box_specular.png")});
-
 #ifdef ACHENGINE_PLATFORM_LINUX
 	const std::string modelPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/sample.fbx";
 	const std::string mapPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/default_map.json";
@@ -730,6 +971,104 @@ void Sandbox3D::OnAttach()
 	}
 }
 
+void Sandbox3D::EnsurePlaySessionActorPossession()
+{
+	if (!m_IsPlaying)
+	{
+		return;
+	}
+
+	if (!m_PlayerController)
+	{
+		m_PlayerController = new FSandboxPlayerController();
+	}
+
+	m_PlayerActor = nullptr;
+	std::vector<Achengine::APlayerStart*> playerStarts;
+	if (Achengine::WorldActorCache* cache = Achengine::WorldActorCache::Get())
+	{
+		for (Achengine::AActor* actor : cache->GetActorCache())
+		{
+			if (Achengine::APlayerStart* playerStart = dynamic_cast<Achengine::APlayerStart*>(actor))
+			{
+				playerStarts.push_back(playerStart);
+			}
+
+			if (Achengine::APlayer* player = dynamic_cast<Achengine::APlayer*>(actor))
+			{
+				m_PlayerActor = player;
+				break;
+			}
+		}
+	}
+
+	if (!m_PlayerActor)
+	{
+		m_PlayerActor = static_cast<Achengine::APlayer*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayer>());
+		glm::vec3 spawnLocation(0.0f, 0.0f, 0.0f);
+		if (!playerStarts.empty())
+		{
+			static std::mt19937 rng(std::random_device{}());
+			std::uniform_int_distribution<size_t> distribution(0, playerStarts.size() - 1);
+			spawnLocation = playerStarts[distribution(rng)]->GetActorLocation();
+		}
+
+		m_PlayerActor->SetActorLocation(spawnLocation);
+		m_PlayerActor->SetActorRotation(glm::vec3(0.0f, 1.0f, 0.0f), 180.0f);
+	}
+
+	if (m_PlayerController)
+	{
+		m_PlayerController->Possess(m_PlayerActor);
+	}
+}
+
+void Sandbox3D::StartPlayMode()
+{
+	if (m_IsPlaying)
+	{
+		EnsurePlaySessionActorPossession();
+		return;
+	}
+
+	if (!m_PlayerController)
+	{
+		m_PlayerController = new FSandboxPlayerController();
+	}
+	m_IsPlaying = true;
+	EnsurePlaySessionActorPossession();
+	m_MapStatus = "Play mode started";
+}
+
+void Sandbox3D::StopPlayMode()
+{
+	if (!m_IsPlaying)
+	{
+		return;
+	}
+
+	if (m_PlayerController)
+	{
+		m_PlayerController->UnPossess();
+		delete m_PlayerController;
+		m_PlayerController = nullptr;
+	}
+
+	if (m_PlayerActor)
+	{
+		if (m_ActiveActor == m_PlayerActor)
+		{
+			m_ActiveActor = nullptr;
+		}
+		m_SelectedActors.erase(m_PlayerActor);
+		Achengine::WorldActorCache::DestroyActor(m_PlayerActor);
+		m_PlayerActor = nullptr;
+	}
+
+	m_IsPlaying = false;
+	m_MapStatus = "Play mode stopped";
+}
+
 void Sandbox3D::SpawnDefaultScene()
 {
 	Achengine::AActor* actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
@@ -746,12 +1085,7 @@ void Sandbox3D::SpawnDefaultScene()
 
 void Sandbox3D::OnDetach()
 {
-	for (std::pair<std::string, Achengine::Texture*> texture : m_Textures)
-	{
-		delete texture.second;
-	}
-
-	m_Textures.clear();
+	StopPlayMode();
 	m_ActiveActor = nullptr;
 	m_SelectedActors.clear();
 }
@@ -759,13 +1093,43 @@ void Sandbox3D::OnDetach()
 void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 {
 	// Update
-	m_CameraController->OnUpdate(timestep);
+	if (m_IsPlaying)
+	{
+		if (!m_PlayerController || !m_PlayerController->GetPossessedPlayer())
+		{
+			EnsurePlaySessionActorPossession();
+		}
+
+		if (m_PlayerController)
+		{
+			m_PlayerController->Tick(timestep.GetSeconds());
+		}
+
+		for (Achengine::AActor* actor : Achengine::WorldActorCache::Get()->GetActorCache())
+		{
+			if (actor)
+			{
+				actor->Tick(timestep.GetSeconds());
+			}
+		}
+	}
+	else if (m_CameraController)
+	{
+		m_CameraController->OnUpdate(timestep);
+	}
 
 	// Render
 	Achengine::RenderCommand::SetClearColor({ 0.4f, 0.4f, 0.8f, 0.3f });
 	Achengine::RenderCommand::Clear();
 
-	Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
+	if (m_IsPlaying && m_PlayerActor)
+	{
+		Achengine::Renderer::BeginScene(m_PlayerActor->GetCameraComponent());
+	}
+	else if (m_CameraController)
+	{
+		Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
+	}
 	Achengine::Renderer::EndScene();
 
 	if (!m_SelectedActors.empty())
@@ -1067,51 +1431,39 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 	return true;
 }
 
-void Sandbox3D::OnImGuiRender()
+Achengine::Camera* Sandbox3D::GetActiveSceneCamera() const
 {
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	const float minOutlinerWidth = 220.0f;
-	const float maxOutlinerWidth = viewport->WorkSize.x * 0.65f;
-	if (m_OutlinerWidth < minOutlinerWidth)
+	if (m_IsPlaying && m_PlayerActor && m_PlayerActor->GetCameraComponent())
 	{
-		m_OutlinerWidth = minOutlinerWidth;
-	}
-	if (m_OutlinerWidth > maxOutlinerWidth)
-	{
-		m_OutlinerWidth = maxOutlinerWidth;
+		return m_PlayerActor->GetCameraComponent();
 	}
 
+	if (m_CameraController)
+	{
+		return m_CameraController->GetCamera();
+	}
+
+	return nullptr;
+}
+
+glm::vec3 Sandbox3D::GetActiveSceneCameraPosition(const Achengine::Camera* camera) const
+{
+	if (!camera)
+	{
+		return glm::vec3(0.0f);
+	}
+
+	if (const Achengine::UCameraComponent* playerCamera = dynamic_cast<const Achengine::UCameraComponent*>(camera))
+	{
+		return playerCamera->GetWorldLocation();
+	}
+
+	return camera->GetPosition();
+}
+
+void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutlinerWidth, float maxOutlinerWidth)
+{
 	const float usableAssetWidth = viewport->WorkSize.x - m_OutlinerWidth;
-	const float minTopPanelHeight = 70.0f;
-	float maxTopPanelHeight = viewport->WorkSize.y - m_AssetBrowserHeight - 80.0f;
-	if (maxTopPanelHeight < minTopPanelHeight)
-	{
-		maxTopPanelHeight = minTopPanelHeight;
-	}
-	if (m_TopMapPanelHeight < minTopPanelHeight)
-	{
-		m_TopMapPanelHeight = minTopPanelHeight;
-	}
-	if (m_TopMapPanelHeight > maxTopPanelHeight)
-	{
-		m_TopMapPanelHeight = maxTopPanelHeight;
-	}
-
-	const float minPanelHeight = 140.0f;
-	float maxPanelHeight = viewport->WorkSize.y - m_TopMapPanelHeight - 80.0f;
-	if (maxPanelHeight < minPanelHeight)
-	{
-		maxPanelHeight = minPanelHeight;
-	}
-	if (m_AssetBrowserHeight < minPanelHeight)
-	{
-		m_AssetBrowserHeight = minPanelHeight;
-	}
-	if (m_AssetBrowserHeight > maxPanelHeight)
-	{
-		m_AssetBrowserHeight = maxPanelHeight;
-	}
-
 	ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + usableAssetWidth, viewport->WorkPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(m_OutlinerWidth, viewport->WorkSize.y), ImGuiCond_Always);
 	ImGuiWindowFlags outlinerFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -1286,8 +1638,10 @@ void Sandbox3D::OnImGuiRender()
 	}
 
 	ImGui::End();
+}
 
-	const float topPanelWidth = viewport->WorkSize.x - m_OutlinerWidth;
+void Sandbox3D::RenderMapPanel(const ImGuiViewport* viewport, float topPanelWidth, float minTopPanelHeight, float maxTopPanelHeight)
+{
 	ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(topPanelWidth, m_TopMapPanelHeight), ImGuiCond_Always);
 	ImGuiWindowFlags topMapFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
@@ -1312,6 +1666,25 @@ void Sandbox3D::OnImGuiRender()
 	if (ImGui::Button("Load Map"))
 	{
 		LoadMapFromFile(m_MapPathBuffer);
+		if (m_IsPlaying)
+		{
+			EnsurePlaySessionActorPossession();
+		}
+	}
+	ImGui::SameLine();
+	if (!m_IsPlaying)
+	{
+		if (ImGui::Button("Play"))
+		{
+			StartPlayMode();
+		}
+	}
+	else
+	{
+		if (ImGui::Button("Stop"))
+		{
+			StopPlayMode();
+		}
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Create New Map"))
@@ -1323,8 +1696,13 @@ void Sandbox3D::OnImGuiRender()
 			m_ActiveActor = nullptr;
 			m_ModelActor = nullptr;
 			m_ModelMesh = nullptr;
+			m_PlayerActor = nullptr;
 			m_MapStatus = "Created new empty map";
 			SpawnDefaultScene();
+			if (m_IsPlaying)
+			{
+				EnsurePlaySessionActorPossession();
+			}
 		}
 		else
 		{
@@ -1332,7 +1710,63 @@ void Sandbox3D::OnImGuiRender()
 		}
 	}
 	ImGui::TextUnformatted(m_MapStatus.c_str());
+	ImGui::Separator();
+	ImGui::TextUnformatted("Renderer Stats");
+	const Achengine::FRendererStats rendererStats = Achengine::Renderer::GetStats();
+	ImGui::Text("Draw Calls: %u", rendererStats.DrawCalls);
+	ImGui::Text("Meshes Queued: %u", rendererStats.MeshesQueued);
+	ImGui::Text("Mesh Batches: %u", rendererStats.MeshBatches);
 	ImGui::End();
+}
+
+void Sandbox3D::OnImGuiRender()
+{
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	const float minOutlinerWidth = 220.0f;
+	const float maxOutlinerWidth = viewport->WorkSize.x * 0.65f;
+	if (m_OutlinerWidth < minOutlinerWidth)
+	{
+		m_OutlinerWidth = minOutlinerWidth;
+	}
+	if (m_OutlinerWidth > maxOutlinerWidth)
+	{
+		m_OutlinerWidth = maxOutlinerWidth;
+	}
+
+	const float usableAssetWidth = viewport->WorkSize.x - m_OutlinerWidth;
+	const float minTopPanelHeight = 70.0f;
+	float maxTopPanelHeight = viewport->WorkSize.y - m_AssetBrowserHeight - 80.0f;
+	if (maxTopPanelHeight < minTopPanelHeight)
+	{
+		maxTopPanelHeight = minTopPanelHeight;
+	}
+	if (m_TopMapPanelHeight < minTopPanelHeight)
+	{
+		m_TopMapPanelHeight = minTopPanelHeight;
+	}
+	if (m_TopMapPanelHeight > maxTopPanelHeight)
+	{
+		m_TopMapPanelHeight = maxTopPanelHeight;
+	}
+
+	const float minPanelHeight = 140.0f;
+	float maxPanelHeight = viewport->WorkSize.y - m_TopMapPanelHeight - 80.0f;
+	if (maxPanelHeight < minPanelHeight)
+	{
+		maxPanelHeight = minPanelHeight;
+	}
+	if (m_AssetBrowserHeight < minPanelHeight)
+	{
+		m_AssetBrowserHeight = minPanelHeight;
+	}
+	if (m_AssetBrowserHeight > maxPanelHeight)
+	{
+		m_AssetBrowserHeight = maxPanelHeight;
+	}
+
+	RenderOutlinerPanel(viewport, minOutlinerWidth, maxOutlinerWidth);
+	const float topPanelWidth = viewport->WorkSize.x - m_OutlinerWidth;
+	RenderMapPanel(viewport, topPanelWidth, minTopPanelHeight, maxTopPanelHeight);
 
 	const float assetWidth = viewport->WorkSize.x - m_OutlinerWidth;
 	ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + viewport->WorkSize.y - m_AssetBrowserHeight), ImGuiCond_Always);
@@ -1606,6 +2040,10 @@ void Sandbox3D::OnImGuiRender()
 			std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
 			m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
 			LoadMapFromFile(entry.FullPath);
+			if (m_IsPlaying)
+			{
+				EnsurePlaySessionActorPossession();
+			}
 		}
 		if (!entry.IsDirectory && ImGui::BeginDragDropSource())
 		{
@@ -1625,8 +2063,14 @@ void Sandbox3D::OnImGuiRender()
 	const ImVec2 sceneMax(viewport->WorkPos.x + assetWidth, viewport->WorkPos.y + viewport->WorkSize.y - m_AssetBrowserHeight);
 	const ImVec2 sceneSize(glm::max(1.0f, sceneMax.x - sceneMin.x), glm::max(1.0f, sceneMax.y - sceneMin.y));
 
+	Achengine::Camera* activeCamera = GetActiveSceneCamera();
+	if (!activeCamera)
+	{
+		return;
+	}
+	const glm::vec3 activeCameraPosition = GetActiveSceneCameraPosition(activeCamera);
+
 	auto ComputeDropWorldLocation = [&](const ImVec2& mousePos) {
-		Achengine::EditorCamera* cam = (Achengine::EditorCamera*)m_CameraController->GetCamera();
 		const float width = renderMax.x - renderMin.x;
 		const float height = renderMax.y - renderMin.y;
 		if (width <= 1.0f || height <= 1.0f)
@@ -1636,7 +2080,7 @@ void Sandbox3D::OnImGuiRender()
 
 		const float x = ((mousePos.x - renderMin.x) / width) * 2.0f - 1.0f;
 		const float y = 1.0f - ((mousePos.y - renderMin.y) / height) * 2.0f;
-		const glm::mat4 viewProjection = cam->GetViewProjection() * cam->GetViewMatrix();
+		const glm::mat4 viewProjection = activeCamera->GetViewProjection() * activeCamera->GetViewMatrix();
 		const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
 
 		glm::vec4 nearClip = glm::vec4(x, y, -1.0f, 1.0f);
@@ -1650,7 +2094,7 @@ void Sandbox3D::OnImGuiRender()
 
 		const glm::vec3 nearWorld = glm::vec3(nearWorld4) / nearWorld4.w;
 		const glm::vec3 farWorld = glm::vec3(farWorld4) / farWorld4.w;
-		const glm::vec3 rayOrigin = cam->GetPosition();
+		const glm::vec3 rayOrigin = activeCameraPosition;
 		const glm::vec3 rayDir = glm::normalize(farWorld - nearWorld);
 
 		const float epsilon = 0.0001f;
@@ -1700,9 +2144,27 @@ void Sandbox3D::OnImGuiRender()
 						}
 						else if (IsJsonFile(dropped))
 						{
-							std::strncpy(m_MapPathBuffer, dropped.c_str(), sizeof(m_MapPathBuffer) - 1);
-							m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
-							LoadMapFromFile(dropped);
+							const glm::vec3 dropLocation = ComputeDropWorldLocation(ImGui::GetIO().MousePos);
+							std::string templateSpawnStatus;
+							const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(dropped, dropLocation, templateSpawnStatus);
+							if (templateResult == EActorTemplateLoadResult::Spawned)
+							{
+								modelStatus = templateSpawnStatus;
+							}
+							else if (templateResult == EActorTemplateLoadResult::NotTemplate)
+							{
+								std::strncpy(m_MapPathBuffer, dropped.c_str(), sizeof(m_MapPathBuffer) - 1);
+								m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
+								LoadMapFromFile(dropped);
+								if (m_IsPlaying)
+								{
+									EnsurePlaySessionActorPossession();
+								}
+							}
+							else
+							{
+								modelStatus = templateSpawnStatus;
+							}
 						}
 						else
 						{
@@ -1752,8 +2214,7 @@ void Sandbox3D::OnImGuiRender()
 	};
 
 	auto WorldToScreen = [&](const glm::vec3& world, ImVec2& out) {
-		Achengine::EditorCamera* camera = (Achengine::EditorCamera*)m_CameraController->GetCamera();
-		glm::mat4 viewProjection = camera->GetViewProjection() * camera->GetViewMatrix();
+		glm::mat4 viewProjection = activeCamera->GetViewProjection() * activeCamera->GetViewMatrix();
 		glm::vec4 clip = viewProjection * glm::vec4(world, 1.0f);
 		if (clip.w <= 0.0001f)
 		{
@@ -1840,8 +2301,7 @@ void Sandbox3D::OnImGuiRender()
 		return outT >= 0.0f;
 	};
 
-	Achengine::EditorCamera* camera = (Achengine::EditorCamera*)m_CameraController->GetCamera();
-	const glm::mat4 viewProjection = camera->GetViewProjection() * camera->GetViewMatrix();
+	const glm::mat4 viewProjection = activeCamera->GetViewProjection() * activeCamera->GetViewMatrix();
 	const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
 	const glm::vec3 canonicalAxes[3] = {
 		glm::vec3(1.0f, 0.0f, 0.0f),
@@ -1862,7 +2322,7 @@ void Sandbox3D::OnImGuiRender()
 		// Keep the gizmo centered on the selected actor bounds every frame.
 		const Achengine::FActorBounds activeBounds = m_ActiveActor->GetBounds();
 		actorPos = activeBounds.IsValid ? activeBounds.Center : m_ActiveActor->GetActorLocation();
-		gizmoWorldSize = glm::max(1.0f, glm::distance(camera->GetPosition(), actorPos) * 0.2f);
+		gizmoWorldSize = glm::max(1.0f, glm::distance(activeCameraPosition, actorPos) * 0.2f);
 
 		Achengine::FActorRotation actorRot = m_ActiveActor->GetActorRotation();
 		glm::vec3 axis = actorRot.RotationAxis;
@@ -1935,7 +2395,7 @@ void Sandbox3D::OnImGuiRender()
 
 		glm::vec3 nearWorld = glm::vec3(nearWorld4) / nearWorld4.w;
 		glm::vec3 farWorld = glm::vec3(farWorld4) / farWorld4.w;
-		glm::vec3 rayOrigin = camera->GetPosition();
+		glm::vec3 rayOrigin = activeCameraPosition;
 		glm::vec3 rayDir = glm::normalize(farWorld - nearWorld);
 
 		Achengine::AActor* bestActor = nullptr;
@@ -2082,7 +2542,7 @@ void Sandbox3D::OnImGuiRender()
 				axisScreenDir.y /= axisLen;
 				const ImVec2 mouseDelta = io.MouseDelta;
 				const float dragAmountPixels = mouseDelta.x * axisScreenDir.x + mouseDelta.y * axisScreenDir.y;
-				const float worldPerPixel = glm::max(0.0025f, glm::distance(camera->GetPosition(), actorPos) * 0.0015f);
+				const float worldPerPixel = glm::max(0.0025f, glm::distance(activeCameraPosition, actorPos) * 0.0015f);
 
 				for (Achengine::AActor* selectedActor : m_SelectedActors)
 				{
@@ -2134,5 +2594,20 @@ void Sandbox3D::OnImGuiRender()
 
 void Sandbox3D::OnEvent(Achengine::Event& event)
 {
-	m_CameraController->OnEvent(event);
+	if (m_IsPlaying)
+	{
+		if (!m_PlayerController || !m_PlayerController->GetPossessedPlayer())
+		{
+			EnsurePlaySessionActorPossession();
+		}
+
+		if (m_PlayerController)
+		{
+			m_PlayerController->OnEvent(event);
+		}
+	}
+	else if (!event.IsHandled())
+	{
+		m_CameraController->OnEvent(event);
+	}
 }

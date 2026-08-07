@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <vector>
 
+struct ImGuiViewport;
+
 class Sandbox3D : public Achengine::Layer
 {
 public:
@@ -22,6 +24,13 @@ private:
 	bool SaveMapToFile(const std::string& filePath);
 	bool LoadMapFromFile(const std::string& filePath);
 	void SpawnDefaultScene();
+	void StartPlayMode();
+	void StopPlayMode();
+	void EnsurePlaySessionActorPossession();
+	Achengine::Camera* GetActiveSceneCamera() const;
+	glm::vec3 GetActiveSceneCameraPosition(const Achengine::Camera* camera) const;
+	void RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutlinerWidth, float maxOutlinerWidth);
+	void RenderMapPanel(const ImGuiViewport* viewport, float topPanelWidth, float minTopPanelHeight, float maxTopPanelHeight);
 
 	enum class EGizmoMode
 	{
@@ -37,8 +46,9 @@ private:
 	};
 
 	Achengine::EditorCameraController* m_CameraController;
-
-	std::map<std::string, Achengine::Texture*> m_Textures;
+	Achengine::APlayerController* m_PlayerController = nullptr;
+	Achengine::APlayer* m_PlayerActor = nullptr;
+	bool m_IsPlaying = false;
 
 	Achengine::AActor* m_ModelActor = nullptr;
 	Achengine::UMesh* m_ModelMesh = nullptr;

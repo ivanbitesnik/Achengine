@@ -27,7 +27,10 @@ namespace Achengine
     {
         public:
             AActor();
+            virtual ~AActor();
 
+            virtual void Tick(float DeltaTime);
+            
             void AddActorComponent(UActorComponent* NewComponent);
 
             template<class T>

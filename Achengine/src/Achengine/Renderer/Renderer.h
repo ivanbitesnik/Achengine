@@ -9,6 +9,7 @@
 namespace Achengine
 {
     class AActor;
+    class UMesh;
 
     struct FSceneLight
     {
@@ -21,11 +22,29 @@ namespace Achengine
         float Quadratic = 0.0007f;
     };
 
+    struct FRendererStats
+    {
+        uint32_t DrawCalls = 0;
+        uint32_t MeshesQueued = 0;
+        uint32_t MeshBatches = 0;
+    };
+
     struct RendererStorage
 	{
+        struct FMeshBatch
+        {
+            std::string ShaderName;
+            std::vector<UMesh*> Meshes;
+        };
+
         glm::vec3 CameraPosition;
         glm::mat4 ViewProjectionMatrix;
 		std::vector<FSceneLight> SceneLights;
+		std::vector<FMeshBatch> MeshBatches;
+        std::map<std::string, size_t> MeshBatchIndices;
+        bool IsSceneOpen = false;
+        FRendererStats CurrentFrameStats;
+        FRendererStats LastFrameStats;
 		Texture2D* WhiteTexture;
         std::map<std::string, VertexArray*> VertexArrays;
         std::vector<Shader*> Shaders;
@@ -44,8 +63,6 @@ namespace Achengine
         }
 	};
     
-    class UMesh;
-
 	class Renderer
 	{
 	public:
@@ -76,6 +93,8 @@ namespace Achengine
         
 		static void BeginScene(Camera* camera);
 		static void EndScene();
+        static void ResetStats();
+        static FRendererStats GetStats();
 
 		static constexpr uint32_t MaxSceneLights = 16;
         static void AddSceneLight(const glm::vec3& position, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular,

@@ -21,6 +21,22 @@ namespace Achengine
         }
     }
 
+    void WorldActorCache::DestroyActor(AActor* ActorToDestroy)
+    {
+        if (!s_Instance || !ActorToDestroy)
+        {
+            return;
+        }
+
+        auto it = s_Instance->ActorCache.find(ActorToDestroy);
+        if (it != s_Instance->ActorCache.end())
+        {
+            s_Instance->ActorCache.erase(it);
+        }
+
+        delete ActorToDestroy;
+    }
+
     WorldActorCache::~WorldActorCache() 
     { 
         ClearActorCache();

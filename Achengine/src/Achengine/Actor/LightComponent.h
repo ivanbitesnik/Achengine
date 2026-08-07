@@ -26,6 +26,7 @@ namespace Achengine
         public:
             ULightComponent();
             virtual ~ULightComponent();
+            virtual void Tick(float DeltaTime) override;
 
             void SetLightSource(FLightSource* NewLightSource) { m_LightSource = NewLightSource; }
             FLightSource* GetLightSource() const { return m_LightSource; }
