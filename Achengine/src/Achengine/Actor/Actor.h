@@ -6,23 +6,6 @@
 
 namespace Achengine
 {
-    struct FActorBounds
-    {
-        glm::vec3 Center = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 Extents = glm::vec3(0.0f, 0.0f, 0.0f);
-        float SphereRadius = 0.0f;
-        bool IsValid = false;
-    };
-    
-    struct FActorRotation
-    {
-        public:
-            FActorRotation() {}
-            FActorRotation(const glm::vec3& RotationAxis, float Angle) : RotationAxis(RotationAxis), Angle(Angle) {}
-            glm::vec3 RotationAxis = {1.0f, 1.0f, 1.0f};
-            float Angle = 0.0f;
-    };
-
     class ACHENGINE_API AActor
     {
         public:
@@ -47,22 +30,22 @@ namespace Achengine
                 return nullptr;
             };
 
-            void SetMesh(UMesh* NewMesh);
-            UMesh* GetMesh() const { return GetComponentByClass<UMesh>(); }
-
             void SetActorName(const std::string& NewName) { ActorName = NewName; }
             const std::string& GetActorName() const { return ActorName; }
+
+            void SetTemplateType(const std::string& NewTemplateType) { TemplateType = NewTemplateType; }
+            const std::string& GetTemplateType() const { return TemplateType; }
             
             void SetActorLocation(glm::vec3 NewLocation) { ActorLocation = NewLocation; }
             glm::vec3 GetActorLocation() const { return ActorLocation; }
 
-            void SetActorRotation(glm::vec3 RotationAxis, float NewAngle) { ActorRotation = FActorRotation(RotationAxis, NewAngle); }
-            FActorRotation GetActorRotation() const { return ActorRotation; }
+            void SetActorRotation(glm::vec3 RotationAxis, float NewAngle) { ActorRotation = FRotation(RotationAxis, NewAngle); }
+            FRotation GetActorRotation() const { return ActorRotation; }
 
             void SetActorScale(glm::vec3 NewScale) { ActorScale = NewScale; }
             glm::vec3 GetActorScale() const { return ActorScale; }
 
-            virtual FActorBounds GetBounds() const;
+            virtual FBounds GetBounds() const;
 
             glm::mat4 GetActorTransform() const;
             
@@ -70,8 +53,9 @@ namespace Achengine
         private:
             std::vector<UActorComponent*> ActorComponents;
             std::string ActorName;
+            std::string TemplateType;
             glm::vec3 ActorLocation = {0.0f, 0.0f, 0.0f};
-            FActorRotation ActorRotation;
+            FRotation ActorRotation;
             glm::vec3 ActorScale = {1.0f, 1.0f, 1.0f};
 
     };

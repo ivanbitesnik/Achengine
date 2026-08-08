@@ -40,7 +40,6 @@
 // ---- Actors ----------------------------
 #include "Achengine/Actor/WorldActorCache.h"
 #include "Achengine/Actor/Mesh.h"
-#include "Achengine/Actor/SpringArmComponent.h"
 #include "Achengine/Actor/CameraComponent.h"
 #include "Achengine/Actor/Player.h"
 #include "Achengine/Actor/PlayerStart.h"

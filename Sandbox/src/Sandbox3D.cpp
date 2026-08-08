@@ -8,8 +8,10 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <algorithm>
+#include <cerrno>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
@@ -20,6 +22,7 @@
 #include <vector>
 
 #include "../../Achengine/vendor/Glad/include/glad/glad.h"
+#include "../../Achengine/vendor/GLFW/include/GLFW/glfw3.h"
 
 static glm::vec3 ToTransform(glm::vec3 vec)
 {
@@ -32,6 +35,23 @@ static bool FileExists(const std::string& path)
 	return stream.good();
 }
 
+static void SetPlayCursorCaptured(bool captured)
+{
+	Achengine::Application* app = Achengine::Application::Get();
+	if (!app)
+	{
+		return;
+	}
+
+	GLFWwindow* window = static_cast<GLFWwindow*>(app->GetWindow().GetNativeWindow());
+	if (!window)
+	{
+		return;
+	}
+
+	glfwSetInputMode(window, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
 static std::string GetDirectoryFromPath(const std::string& filePath)
 {
 	const size_t slash = filePath.find_last_of("/\\");
@@ -41,6 +61,53 @@ static std::string GetDirectoryFromPath(const std::string& filePath)
 	}
 
 	return filePath.substr(0, slash);
+}
+
+static bool WriteTextFileAtomically(const std::string& filePath, const std::string& contents, std::string& outError)
+{
+	if (filePath.empty())
+	{
+		outError = "Target path is empty";
+		return false;
+	}
+
+	const std::string tempPath = filePath + ".tmp";
+	{
+		std::ofstream out(tempPath, std::ios::out | std::ios::trunc);
+		if (!out.is_open())
+		{
+			outError = Achengine::format("Failed to open temp file for write: %s", tempPath.c_str());
+			return false;
+		}
+
+		out << contents;
+		if (!out.good())
+		{
+			outError = Achengine::format("Failed while writing temp file: %s", tempPath.c_str());
+			out.close();
+			std::remove(tempPath.c_str());
+			return false;
+		}
+
+		out.flush();
+		if (!out.good())
+		{
+			outError = Achengine::format("Failed while flushing temp file: %s", tempPath.c_str());
+			out.close();
+			std::remove(tempPath.c_str());
+			return false;
+		}
+	}
+
+	std::remove(filePath.c_str());
+	if (std::rename(tempPath.c_str(), filePath.c_str()) != 0)
+	{
+		outError = Achengine::format("Failed to replace map file (%s)", std::strerror(errno));
+		std::remove(tempPath.c_str());
+		return false;
+	}
+
+	return true;
 }
 
 static bool IsModelFile(const std::string& fileName)
@@ -280,52 +347,6 @@ static std::string ToDisplayRelativePath(const std::string& path, const std::str
 
 namespace
 {
-	class FSandboxPlayerController : public Achengine::APlayerController
-	{
-	public:
-		void Tick(float DeltaTime) override
-		{
-			Achengine::APlayer* player = GetPossessedPlayer();
-			if (player)
-			{
-				glm::vec3 moveDirection(0.0f, 0.0f, 0.0f);
-				if (IsKeyDown(ACHENGINE_KEY_W)) { moveDirection.z -= 1.0f; }
-				if (IsKeyDown(ACHENGINE_KEY_S)) { moveDirection.z += 1.0f; }
-				if (IsKeyDown(ACHENGINE_KEY_A)) { moveDirection.x -= 1.0f; }
-				if (IsKeyDown(ACHENGINE_KEY_D)) { moveDirection.x += 1.0f; }
-				if (IsKeyDown(ACHENGINE_KEY_Q)) { moveDirection.y += 1.0f; }
-				if (IsKeyDown(ACHENGINE_KEY_E)) { moveDirection.y -= 1.0f; }
-
-				if (glm::length(moveDirection) > 0.0001f)
-				{
-					moveDirection = glm::normalize(moveDirection);
-					player->SetActorLocation(player->GetActorLocation() + moveDirection * m_MoveSpeed * DeltaTime);
-				}
-
-				if (Achengine::USpringArmComponent* springArm = player->GetSpringArm())
-				{
-					if (IsMouseButtonDown(ACHENGINE_MOUSE_BUTTON_RIGHT))
-					{
-						m_YawDegrees += GetMouseDelta().x * m_MouseLookSensitivity;
-						m_PitchDegrees -= GetMouseDelta().y * m_MouseLookSensitivity;
-						m_PitchDegrees = glm::clamp(m_PitchDegrees, -80.0f, 20.0f);
-					}
-
-					springArm->SetRelativeRotation(glm::vec3(1.0f, 0.0f, 0.0f), m_PitchDegrees);
-					player->SetActorRotation(glm::vec3(0.0f, 1.0f, 0.0f), m_YawDegrees);
-				}
-			}
-
-			APlayerController::Tick(DeltaTime);
-		}
-
-	private:
-		float m_MoveSpeed = 10.0f;
-		float m_MouseLookSensitivity = 0.1f;
-		float m_YawDegrees = 0.0f;
-		float m_PitchDegrees = -20.0f;
-	};
-
 	struct FJsonValue
 	{
 		enum class EType
@@ -772,6 +793,52 @@ namespace
 		return baseDir + candidatePath;
 	}
 
+	static std::string NormalizeActorTemplatePathForMap(const std::string& mapFilePath, const std::string& templatePath)
+	{
+		if (templatePath.empty())
+		{
+			return templatePath;
+		}
+
+		std::string normalizedTemplatePath = templatePath;
+		std::replace(normalizedTemplatePath.begin(), normalizedTemplatePath.end(), '\\', '/');
+		if (normalizedTemplatePath.rfind("../actors/", 0) == 0)
+		{
+			return normalizedTemplatePath;
+		}
+
+		const std::string actorsMarker = "/assets/actors/";
+		const size_t markerPos = normalizedTemplatePath.find(actorsMarker);
+		if (markerPos != std::string::npos)
+		{
+			return "../actors/" + normalizedTemplatePath.substr(markerPos + actorsMarker.size());
+		}
+
+		if (mapFilePath.empty())
+		{
+			return templatePath;
+		}
+
+		std::string resolvedTemplatePath = ResolvePathRelativeToFile(mapFilePath, templatePath);
+		std::replace(resolvedTemplatePath.begin(), resolvedTemplatePath.end(), '\\', '/');
+
+		std::string mapDirectory = GetDirectoryFromPath(mapFilePath);
+		std::replace(mapDirectory.begin(), mapDirectory.end(), '\\', '/');
+		const std::string mapsMarker = "/assets/maps/";
+		const size_t mapsPos = mapDirectory.find(mapsMarker);
+		if (mapsPos != std::string::npos)
+		{
+			const std::string assetsDirectory = mapDirectory.substr(0, mapsPos + std::strlen("/assets/"));
+			const std::string actorsDirectory = assetsDirectory + "actors/";
+			if (resolvedTemplatePath.rfind(actorsDirectory, 0) == 0)
+			{
+				return "../actors/" + resolvedTemplatePath.substr(actorsDirectory.size());
+			}
+		}
+
+		return templatePath;
+	}
+
 	static bool ParseJsonFile(const std::string& filePath, FJsonValue& outRoot, std::string& outError)
 	{
 		std::ifstream in(filePath);
@@ -804,8 +871,13 @@ namespace
 		return true;
 	}
 
-	static EActorTemplateLoadResult SpawnActorTemplateFromJson(const std::string& filePath, const glm::vec3& dropLocation, std::string& outStatus)
+	static EActorTemplateLoadResult SpawnActorTemplateFromJson(const std::string& filePath, const glm::vec3& dropLocation, std::string& outStatus, Achengine::AActor** outSpawnedActor = nullptr, const std::string& templateType = "")
 	{
+		if (outSpawnedActor)
+		{
+			*outSpawnedActor = nullptr;
+		}
+
 		FJsonValue root;
 		std::string parseError;
 		if (!ParseJsonFile(filePath, root, parseError))
@@ -847,6 +919,7 @@ namespace
 		{
 			actor->SetActorName(templateName);
 		}
+		actor->SetTemplateType(templateType.empty() ? filePath : templateType);
 
 		glm::vec3 localOffset(0.0f);
 		glm::vec3 rotationAxis(1.0f, 0.0f, 0.0f);
@@ -889,12 +962,12 @@ namespace
 
 				if (FileExists(modelPath))
 				{
-					actor->SetMesh(new Achengine::UMesh(modelPath));
+					actor->AddActorComponent(new Achengine::UMesh(modelPath));
 				}
 			}
 			else if (componentType == "water")
 			{
-				actor->SetMesh(new Achengine::UWaterMesh());
+				actor->AddActorComponent(new Achengine::UWaterMesh());
 			}
 			else if (componentType == "light")
 			{
@@ -926,6 +999,11 @@ namespace
 		actor->SetActorLocation(dropLocation + localOffset);
 		actor->SetActorRotation(glm::normalize(rotationAxis), rotationAngle);
 		actor->SetActorScale(scale);
+
+		if (outSpawnedActor)
+		{
+			*outSpawnedActor = actor;
+		}
 
 		outStatus = Achengine::format("Spawned template '%s'", templateName.empty() ? "Unnamed" : templateName.c_str());
 		return EActorTemplateLoadResult::Spawned;
@@ -980,7 +1058,7 @@ void Sandbox3D::EnsurePlaySessionActorPossession()
 
 	if (!m_PlayerController)
 	{
-		m_PlayerController = new FSandboxPlayerController();
+		m_PlayerController = new Achengine::APlayerController();
 	}
 
 	m_PlayerActor = nullptr;
@@ -1006,15 +1084,18 @@ void Sandbox3D::EnsurePlaySessionActorPossession()
 	{
 		m_PlayerActor = static_cast<Achengine::APlayer*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayer>());
 		glm::vec3 spawnLocation(0.0f, 0.0f, 0.0f);
+		Achengine::FRotation spawnRotation(glm::vec3(0.0f, 1.0f, 0.0f), 180.0f);
 		if (!playerStarts.empty())
 		{
 			static std::mt19937 rng(std::random_device{}());
 			std::uniform_int_distribution<size_t> distribution(0, playerStarts.size() - 1);
-			spawnLocation = playerStarts[distribution(rng)]->GetActorLocation();
+			Achengine::APlayerStart* selectedStart = playerStarts[distribution(rng)];
+			spawnLocation = selectedStart->GetActorLocation();
+			spawnRotation = selectedStart->GetActorRotation();
 		}
 
 		m_PlayerActor->SetActorLocation(spawnLocation);
-		m_PlayerActor->SetActorRotation(glm::vec3(0.0f, 1.0f, 0.0f), 180.0f);
+		m_PlayerActor->SetActorRotation(spawnRotation.RotationAxis, spawnRotation.Angle);
 	}
 
 	if (m_PlayerController)
@@ -1033,9 +1114,16 @@ void Sandbox3D::StartPlayMode()
 
 	if (!m_PlayerController)
 	{
-		m_PlayerController = new FSandboxPlayerController();
+		m_PlayerController = new Achengine::APlayerController();
 	}
+
+	m_SelectedActors.clear();
+	m_ActiveActor = nullptr;
+	m_GizmoDragging = false;
+	m_GizmoActiveAxis = -1;
+
 	m_IsPlaying = true;
+	SetPlayCursorCaptured(true);
 	EnsurePlaySessionActorPossession();
 	m_MapStatus = "Play mode started";
 }
@@ -1066,6 +1154,7 @@ void Sandbox3D::StopPlayMode()
 	}
 
 	m_IsPlaying = false;
+	SetPlayCursorCaptured(false);
 	m_MapStatus = "Play mode stopped";
 }
 
@@ -1073,12 +1162,14 @@ void Sandbox3D::SpawnDefaultScene()
 {
 	Achengine::AActor* actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	actor->SetActorName(Achengine::format("Floor"));
-	actor->SetMesh(new Achengine::UMesh(GetDefaultCubeModelPath()));
+	actor->SetTemplateType("../actors/CrateTemplate.json");
+	actor->AddActorComponent(new Achengine::UMesh(GetDefaultCubeModelPath()));
 	actor->SetActorLocation({0.0f, 0.0f, 0.0f});
 	actor->SetActorScale({100.0f, 1.0f, 100.0f});
 
 	Achengine::AActor* lightActor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	lightActor->SetActorName(Achengine::format("Light"));
+	lightActor->SetTemplateType("../actors/LightTemplate.json");
 	lightActor->AddActorComponent(new Achengine::ULightComponent());
 	lightActor->SetActorLocation({0.0f, 10.0f, 0.0f});
 }
@@ -1086,6 +1177,7 @@ void Sandbox3D::SpawnDefaultScene()
 void Sandbox3D::OnDetach()
 {
 	StopPlayMode();
+	SetPlayCursorCaptured(false);
 	m_ActiveActor = nullptr;
 	m_SelectedActors.clear();
 }
@@ -1122,14 +1214,7 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	Achengine::RenderCommand::SetClearColor({ 0.4f, 0.4f, 0.8f, 0.3f });
 	Achengine::RenderCommand::Clear();
 
-	if (m_IsPlaying && m_PlayerActor)
-	{
-		Achengine::Renderer::BeginScene(m_PlayerActor->GetCameraComponent());
-	}
-	else if (m_CameraController)
-	{
-		Achengine::Renderer::BeginScene(m_CameraController->GetCamera());
-	}
+	Achengine::Renderer::BeginScene(GetActiveSceneCamera());
 	Achengine::Renderer::EndScene();
 
 	if (!m_SelectedActors.empty())
@@ -1157,12 +1242,7 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 		return false;
 	}
 
-	std::ofstream out(filePath);
-	if (!out.is_open())
-	{
-		m_MapStatus = "Failed to open map file for write";
-		return false;
-	}
+	std::stringstream out;
 
 	out << "{\n";
 	out << "  \"version\": 1,\n";
@@ -1178,36 +1258,31 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 				continue;
 			}
 
-			if (actor->GetMesh() || actor->GetComponentByClass<Achengine::ULightComponent>())
-			{
-				actors.push_back(actor);
-			}
+			actors.push_back(actor);
 		}
 	}
 
 	std::sort(actors.begin(), actors.end());
-	for (size_t i = 0; i < actors.size(); ++i)
+	bool wroteAnyActor = false;
+	for (Achengine::AActor* actor : actors)
 	{
-		Achengine::AActor* actor = actors[i];
-		Achengine::UMesh* mesh = actor->GetMesh();
+		Achengine::UMesh* mesh = actor->GetComponentByClass<Achengine::UMesh>();
 		Achengine::ULightComponent* lightComponent = actor->GetComponentByClass<Achengine::ULightComponent>();
-		std::string meshType = "unknown";
-		if (lightComponent)
+		const std::string actorTemplatePath = actor->GetTemplateType();
+		if (actorTemplatePath.empty())
 		{
-			meshType = "light";
+			continue;
 		}
-		else if (dynamic_cast<Achengine::UWaterMesh*>(mesh))
+
+		if (wroteAnyActor)
 		{
-			meshType = "water";
+			out << ",\n";
 		}
-		else
-		{
-			meshType = "mesh";
-		}
+		wroteAnyActor = true;
 
 		const glm::vec3 location = actor->GetActorLocation();
 		const glm::vec3 scale = actor->GetActorScale();
-		Achengine::FActorRotation rotation = actor->GetActorRotation();
+		Achengine::FRotation rotation = actor->GetActorRotation();
 		glm::vec3 rotAxis = rotation.RotationAxis;
 		if (glm::length(rotAxis) < 0.0001f)
 		{
@@ -1216,7 +1291,7 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 
 		out << "    {\n";
 		out << "      \"name\": \"" << JsonEscape(actor->GetActorName()) << "\",\n";
-		out << "      \"meshType\": \"" << meshType << "\",\n";
+		out << "      \"actorTemplate\": \"" << JsonEscape(actorTemplatePath) << "\",\n";
 		out << "      \"location\": " << JsonVec3(location) << ",\n";
 		out << "      \"rotationAxis\": " << JsonVec3(glm::normalize(rotAxis)) << ",\n";
 		out << "      \"rotationAngle\": " << rotation.Angle << ",\n";
@@ -1238,22 +1313,25 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 				out << "      }";
 			}
 		}
-		else if (!mesh->GetModelPath().empty())
+		if (mesh && !mesh->GetModelPath().empty())
 		{
 			out << ",\n      \"modelPath\": \"" << JsonEscape(mesh->GetModelPath()) << "\"";
 		}
 
 		out << "\n    }";
-		if (i + 1 < actors.size())
-		{
-			out << ",";
-		}
-		out << "\n";
 	}
+
+	out << "\n";
 
 	out << "  ]\n";
 	out << "}\n";
-	out.close();
+
+	std::string writeError;
+	if (!WriteTextFileAtomically(filePath, out.str(), writeError))
+	{
+		m_MapStatus = Achengine::format("Failed to save map: %s", writeError.c_str());
+		return false;
+	}
 
 	m_MapStatus = Achengine::format("Saved map: %s", filePath.c_str());
 	return true;
@@ -1323,102 +1401,56 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 		}
 
 		std::string name;
-		std::string meshType;
+		std::string actorTemplate;
 		glm::vec3 location(0.0f);
 		glm::vec3 rotationAxis(1.0f, 0.0f, 0.0f);
 		glm::vec3 scale(1.0f);
 		float rotationAngle = 0.0f;
 		JsonReadStringField(actorValue, "name", name);
-		JsonReadStringField(actorValue, "meshType", meshType);
+		JsonReadStringField(actorValue, "actorTemplate", actorTemplate);
 		JsonReadVec3Field(actorValue, "location", location);
 		JsonReadVec3Field(actorValue, "rotationAxis", rotationAxis);
 		JsonReadNumberField(actorValue, "rotationAngle", rotationAngle);
 		JsonReadVec3Field(actorValue, "scale", scale);
 
-		Achengine::UMesh* mesh = nullptr;
-		Achengine::ULightComponent* lightComponent = nullptr;
-		if (meshType == "light")
-		{
-			lightComponent = new Achengine::ULightComponent();
-			FJsonValue lightValue;
-			if (JsonReadObjectField(actorValue, "light", lightValue) && lightValue.Type == FJsonValue::EType::Object)
-			{
-				if (Achengine::FLightSource* ls = lightComponent->GetLightSource())
-				{
-					JsonReadVec3Field(lightValue, "color", ls->color);
-					JsonReadVec3Field(lightValue, "ambient", ls->ambient);
-					JsonReadVec3Field(lightValue, "diffuse", ls->diffuse);
-					JsonReadVec3Field(lightValue, "specular", ls->specular);
-					JsonReadNumberField(lightValue, "constant", ls->constant);
-					JsonReadNumberField(lightValue, "linear", ls->linear);
-					JsonReadNumberField(lightValue, "quadratic", ls->quadratic);
-				}
-			}
-		}
-		else if (meshType == "model" || meshType == "static" || meshType == "mesh")
-		{
-			std::string modelPath;
-			JsonReadStringField(actorValue, "modelPath", modelPath);
-			if (modelPath.empty() || !FileExists(modelPath))
-			{
-				modelPath = GetDefaultCubeModelPath();
-				if (!FileExists(modelPath))
-				{
-					continue;
-				}
-			}
-
-			mesh = new Achengine::UMesh(modelPath);
-			std::strncpy(m_ModelPathBuffer, modelPath.c_str(), sizeof(m_ModelPathBuffer) - 1);
-			m_ModelPathBuffer[sizeof(m_ModelPathBuffer) - 1] = '\0';
-		}
-		else if (meshType == "water")
-		{
-			mesh = new Achengine::UWaterMesh();
-		}
-		else
-		{
-			std::string modelPath = GetDefaultCubeModelPath();
-			if (FileExists(modelPath))
-			{
-				mesh = new Achengine::UMesh(modelPath);
-				std::strncpy(m_ModelPathBuffer, modelPath.c_str(), sizeof(m_ModelPathBuffer) - 1);
-				m_ModelPathBuffer[sizeof(m_ModelPathBuffer) - 1] = '\0';
-			}
-		}
-
-		if (!mesh && !lightComponent)
+		if (actorTemplate.empty())
 		{
 			continue;
 		}
 
-		Achengine::AActor* actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
-		if (!name.empty())
-		{
-			actor->SetActorName(name);
-		}
+		const std::string normalizedActorTemplate = NormalizeActorTemplatePathForMap(filePath, actorTemplate);
 
-		if (mesh)
+		Achengine::AActor* spawnedFromTemplate = nullptr;
+		std::string templateStatus;
+		const std::string resolvedTemplatePath = ResolvePathRelativeToFile(filePath, normalizedActorTemplate);
+		const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(resolvedTemplatePath, location, templateStatus, &spawnedFromTemplate, normalizedActorTemplate);
+
+		if (templateResult == EActorTemplateLoadResult::Spawned && spawnedFromTemplate)
 		{
-			actor->SetMesh(mesh);
-			if (!dynamic_cast<Achengine::UWaterMesh*>(mesh))
+			if (!name.empty())
 			{
-				m_ModelActor = actor;
-				m_ModelMesh = mesh;
+				spawnedFromTemplate->SetActorName(name);
 			}
+			if (glm::length(rotationAxis) < 0.0001f)
+			{
+				rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+			}
+
+			spawnedFromTemplate->SetActorLocation(location);
+			spawnedFromTemplate->SetActorRotation(glm::normalize(rotationAxis), rotationAngle);
+			spawnedFromTemplate->SetActorScale(scale);
+
+			if (Achengine::UMesh* spawnedMesh = spawnedFromTemplate->GetComponentByClass<Achengine::UMesh>())
+			{
+				if (!dynamic_cast<Achengine::UWaterMesh*>(spawnedMesh))
+				{
+					m_ModelActor = spawnedFromTemplate;
+					m_ModelMesh = spawnedMesh;
+				}
+			}
+
+			++loadedActors;
 		}
-		if (lightComponent)
-		{
-			actor->AddActorComponent(lightComponent);
-		}
-		actor->SetActorLocation(location);
-		if (glm::length(rotationAxis) < 0.0001f)
-		{
-			rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
-		}
-		actor->SetActorRotation(glm::normalize(rotationAxis), rotationAngle);
-		actor->SetActorScale(scale);
-		++loadedActors;
 	}
 
 	if (loadedActors == 0)
@@ -1433,7 +1465,7 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 
 Achengine::Camera* Sandbox3D::GetActiveSceneCamera() const
 {
-	if (m_IsPlaying && m_PlayerActor && m_PlayerActor->GetCameraComponent())
+	if (m_IsPlaying && m_PlayerActor)
 	{
 		return m_PlayerActor->GetCameraComponent();
 	}
@@ -1512,11 +1544,16 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 		ImGui::SameLine();
 		ImGui::TextUnformatted("(Ctrl-click for multiselect)");
 		ImGui::Separator();
+		if (m_IsPlaying)
+		{
+			ImGui::TextUnformatted("Selection disabled while in Play mode");
+		}
+		ImGui::BeginDisabled(m_IsPlaying);
 		ImGui::BeginChild("OutlinerActors", ImVec2(0.0f, 220.0f), true);
 		for (Achengine::AActor* actor : actors)
 		{
 			std::string shaderName = "<none>";
-			if (Achengine::UMesh* mesh = actor->GetMesh())
+			if (Achengine::UMesh* mesh = actor->GetComponentByClass<Achengine::UMesh>())
 			{
 				shaderName = mesh->GetShaderName();
 			}
@@ -1552,11 +1589,14 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 			ImGui::PopID();
 		}
 		ImGui::EndChild();
+		ImGui::EndDisabled();
 
-		ImGui::Separator();
-		ImGui::TextUnformatted("Selected Actor");
-		if (m_ActiveActor)
+		if (!m_IsPlaying)
 		{
+			ImGui::Separator();
+			ImGui::TextUnformatted("Selected Actor");
+			if (m_ActiveActor)
+			{
 			ImGui::Text("Active: %s", m_ActiveActor->GetActorName().c_str());
 			ImGui::Text("Selected Count: %d", (int)m_SelectedActors.size());
 
@@ -1566,7 +1606,7 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				m_ActiveActor->SetActorLocation(location);
 			}
 
-			Achengine::FActorRotation rotation = m_ActiveActor->GetActorRotation();
+			Achengine::FRotation rotation = m_ActiveActor->GetActorRotation();
 			glm::vec3 rotationAxis = rotation.RotationAxis;
 			float angle = rotation.Angle;
 			if (ImGui::DragFloat3("Rotation Axis", &rotationAxis.x, 0.01f, -1.0f, 1.0f))
@@ -1630,10 +1670,16 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				ImGui::DragFloat("Scale Snap", &m_ScaleSnapStep, 0.01f, 0.01f, 10.0f);
 			}
 			ImGui::TextUnformatted("Drag axis handles in viewport to transform selected actors.");
+			}
+			else
+			{
+				ImGui::TextUnformatted("No actor selected");
+			}
 		}
 		else
 		{
-			ImGui::TextUnformatted("No actor selected");
+			ImGui::Separator();
+			ImGui::TextUnformatted("Editor transform and gizmo controls are hidden in Play mode");
 		}
 	}
 
@@ -1801,7 +1847,7 @@ void Sandbox3D::OnImGuiRender()
 			Achengine::AActor* newActor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 			newActor->SetActorName("ImportedModel");
 			Achengine::UMesh* newMesh = new Achengine::UMesh(modelPath);
-			newActor->SetMesh(newMesh);
+			newActor->AddActorComponent(newMesh);
 			if (spawnWorldLocation)
 			{
 				newActor->SetActorLocation(*spawnWorldLocation);
@@ -2146,7 +2192,8 @@ void Sandbox3D::OnImGuiRender()
 						{
 							const glm::vec3 dropLocation = ComputeDropWorldLocation(ImGui::GetIO().MousePos);
 							std::string templateSpawnStatus;
-							const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(dropped, dropLocation, templateSpawnStatus);
+							const std::string templateType = NormalizeActorTemplatePathForMap(m_MapPathBuffer, dropped);
+							const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(dropped, dropLocation, templateSpawnStatus, nullptr, templateType);
 							if (templateResult == EActorTemplateLoadResult::Spawned)
 							{
 								modelStatus = templateSpawnStatus;
@@ -2317,14 +2364,14 @@ void Sandbox3D::OnImGuiRender()
 	glm::vec3 actorPos(0.0f);
 	float gizmoWorldSize = 1.0f;
 
-	if (m_ActiveActor && !m_SelectedActors.empty())
+	if (!m_IsPlaying && m_ActiveActor && !m_SelectedActors.empty())
 	{
 		// Keep the gizmo centered on the selected actor bounds every frame.
-		const Achengine::FActorBounds activeBounds = m_ActiveActor->GetBounds();
+		const Achengine::FBounds activeBounds = m_ActiveActor->GetBounds();
 		actorPos = activeBounds.IsValid ? activeBounds.Center : m_ActiveActor->GetActorLocation();
 		gizmoWorldSize = glm::max(1.0f, glm::distance(activeCameraPosition, actorPos) * 0.2f);
 
-		Achengine::FActorRotation actorRot = m_ActiveActor->GetActorRotation();
+		Achengine::FRotation actorRot = m_ActiveActor->GetActorRotation();
 		glm::vec3 axis = actorRot.RotationAxis;
 		if (glm::length(axis) < 0.0001f)
 		{
@@ -2405,12 +2452,18 @@ void Sandbox3D::OnImGuiRender()
 		{
 			for (Achengine::AActor* actor : cache->GetActorCache())
 			{
-				if (!actor || !actor->GetMesh())
+				if (!actor)
 				{
 					continue;
 				}
 
-				const Achengine::FActorBounds bounds = actor->GetBounds();
+				Achengine::UMesh* ActorMesh = actor->GetComponentByClass<Achengine::UMesh>();
+				if (!ActorMesh)
+				{
+					continue;
+				}
+
+				const Achengine::FBounds bounds = actor->GetBounds();
 				if (!bounds.IsValid)
 				{
 					continue;
@@ -2423,7 +2476,7 @@ void Sandbox3D::OnImGuiRender()
 					continue;
 				}
 
-				const Achengine::FMeshBounds meshBounds = actor->GetMesh()->GetBounds();
+				const Achengine::FBounds meshBounds = ActorMesh->GetBounds();
 				if (!meshBounds.IsValid)
 				{
 					continue;
@@ -2434,8 +2487,8 @@ void Sandbox3D::OnImGuiRender()
 				const glm::vec3 localRayOrigin = glm::vec3(inverseActorTransform * glm::vec4(rayOrigin, 1.0f));
 				const glm::vec3 localRayDir = glm::vec3(inverseActorTransform * glm::vec4(rayDir, 0.0f));
 
-				const glm::vec3 localMin = meshBounds.LocalCenter - meshBounds.LocalExtents;
-				const glm::vec3 localMax = meshBounds.LocalCenter + meshBounds.LocalExtents;
+				const glm::vec3 localMin = meshBounds.Center - meshBounds.Extents;
+				const glm::vec3 localMax = meshBounds.Center + meshBounds.Extents;
 				float localHitT = 0.0f;
 				if (!IntersectRayAABB(localRayOrigin, localRayDir, localMin, localMax, localHitT))
 				{
@@ -2461,7 +2514,7 @@ void Sandbox3D::OnImGuiRender()
 		return bestActor;
 	};
 
-	if (ImGui::IsMouseClicked(0) && mouseInScene && !io.WantCaptureMouse)
+	if (!m_IsPlaying && ImGui::IsMouseClicked(0) && mouseInScene && !io.WantCaptureMouse)
 	{
 		int clickedAxis = -1;
 		if (hasGizmo)
@@ -2524,7 +2577,7 @@ void Sandbox3D::OnImGuiRender()
 		}
 	}
 
-	if (m_ActiveActor && !m_SelectedActors.empty())
+	if (!m_IsPlaying && m_ActiveActor && !m_SelectedActors.empty())
 	{
 		if (!ImGui::IsMouseDown(0))
 		{
@@ -2566,7 +2619,7 @@ void Sandbox3D::OnImGuiRender()
 					else if (m_GizmoMode == EGizmoMode::Rotate)
 					{
 						float rotateDeltaDeg = SnapDelta(dragAmountPixels * 0.45f, m_RotateSnapStep);
-						Achengine::FActorRotation rot = selectedActor->GetActorRotation();
+						Achengine::FRotation rot = selectedActor->GetActorRotation();
 						glm::vec3 currentAxis = rot.RotationAxis;
 						if (glm::length(currentAxis) < 0.0001f)
 						{
@@ -2596,6 +2649,23 @@ void Sandbox3D::OnEvent(Achengine::Event& event)
 {
 	if (m_IsPlaying)
 	{
+		Achengine::EventDispatcher dispatcher(event);
+		dispatcher.Dispatch<Achengine::KeyPressedEvent>([this](Achengine::KeyPressedEvent& keyEvent)
+		{
+			if (keyEvent.GetKeyCode() == ACHENGINE_KEY_ESCAPE)
+			{
+				StopPlayMode();
+				return true;
+			}
+
+			return false;
+		});
+
+		if (event.IsHandled())
+		{
+			return;
+		}
+
 		if (!m_PlayerController || !m_PlayerController->GetPossessedPlayer())
 		{
 			EnsurePlaySessionActorPossession();

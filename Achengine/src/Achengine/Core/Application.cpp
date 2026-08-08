@@ -119,12 +119,7 @@ namespace Achengine
 
 	bool Application::OnKeyPressed(KeyPressedEvent& e)
 	{
-		if (e.GetKeyCode() == ACHENGINE_KEY_ESCAPE)
-		{
-			bRunning = false;
-			return true;
-		}
-
+		(void)e;
 		return false;
 	}
 	bool Application::OnWindowResized(WindowResizeEvent& e)

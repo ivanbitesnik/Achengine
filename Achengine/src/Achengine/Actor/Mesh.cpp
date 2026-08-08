@@ -382,9 +382,9 @@ namespace Achengine
 
         if (hasVertices)
         {
-            m_Bounds.LocalCenter = (minBounds + maxBounds) * 0.5f;
-            m_Bounds.LocalExtents = (maxBounds - minBounds) * 0.5f;
-            m_Bounds.LocalSphereRadius = glm::length(m_Bounds.LocalExtents);
+            m_Bounds.Center = (minBounds + maxBounds) * 0.5f;
+            m_Bounds.Extents = (maxBounds - minBounds) * 0.5f;
+            m_Bounds.SphereRadius = glm::length(m_Bounds.Extents);
             m_Bounds.IsValid = true;
         }
 

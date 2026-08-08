@@ -30,14 +30,6 @@ namespace Achengine
         std::string VertexArrayName;
     };
 
-    struct FMeshBounds
-    {
-        glm::vec3 LocalCenter = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 LocalExtents = glm::vec3(1.0f, 1.0f, 1.0f);
-        float LocalSphereRadius = 1.7320508f;
-        bool IsValid = true;
-    };
-
     struct FMeshMaterial
     {
         public:
@@ -68,7 +60,6 @@ namespace Achengine
             void SetSpecular(Texture* NewSpecular) { m_Specular = NewSpecular; }
             void SetNormal(Texture* NewNormal) { m_Normal = NewNormal; }
             Texture* GetNormal() const { return m_Normal; }
-            virtual FMeshBounds GetBounds() const { return m_Bounds; }
             bool ReloadModel(const std::string& modelPath);
             uint64_t GetBatchSortKey() const;
             
@@ -92,7 +83,6 @@ namespace Achengine
             Texture* m_Texture = nullptr;
             Texture* m_Specular = nullptr;
             Texture* m_Normal = nullptr;
-            FMeshBounds m_Bounds;
             std::vector<FImportedSubMesh> m_SubMeshes;
     };
 }

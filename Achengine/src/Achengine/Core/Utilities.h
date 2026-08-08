@@ -30,4 +30,21 @@ namespace Achengine
     std::string GetObjectNameFromFilePath(const std::string& filePath);
     std::vector<float> FlattenVector(const std::vector<glm::vec3>& vector);
     std::vector<float> FlattenVector(const std::vector<std::pair<float, float>>& vector);
+
+    struct FBounds
+    {
+        glm::vec3 Center = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 Extents = glm::vec3(0.0f, 0.0f, 0.0f);
+        float SphereRadius = 0.0f;
+        bool IsValid = false;
+    };
+    
+    struct FRotation
+    {
+        public:
+            FRotation() {}
+            FRotation(const glm::vec3& RotationAxis, float Angle) : RotationAxis(RotationAxis), Angle(Angle) {}
+            glm::vec3 RotationAxis = {1.0f, 1.0f, 1.0f};
+            float Angle = 0.0f;
+    };
 }

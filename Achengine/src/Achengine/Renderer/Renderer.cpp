@@ -430,7 +430,7 @@ namespace Achengine
 			}
 			if (shader->HasUniform("u_Transform"))
 			{
-				SetShaderUniform(ShaderName, "u_Transform", Mesh->GetOwner()->GetActorTransform());
+				SetShaderUniform(ShaderName, "u_Transform", Mesh->GetComponentTransform());
 			}
 			
 			SetShaderUniform(ShaderName, "u_ViewProjection", s_RenderData->ViewProjectionMatrix);

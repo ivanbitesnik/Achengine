@@ -3,6 +3,7 @@
 
 #include "Achengine/Actor/Mesh.h"
 #include "Achengine/Actor/WorldActorCache.h"
+#include "Achengine/Core/Utilities.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -61,49 +62,25 @@ namespace Achengine
         ActorComponents.push_back(NewComponent);
     }
 
-    void AActor::SetMesh(UMesh* NewMesh)
-    {
-        UMesh* CurrentMesh = GetComponentByClass<UMesh>();
-        if (!CurrentMesh)
-        {
-            AddActorComponent(NewMesh);
-        }
-        else
-        {
-            for (size_t i = 0; i < ActorComponents.size(); ++i)
-            {
-                if (ActorComponents[i] == CurrentMesh)
-                {
-                    NewMesh->SetOwner(this);
-                    ActorComponents[i] = NewMesh;
-                    delete CurrentMesh;
-                    return;
-                }
-            }
-
-            AddActorComponent(NewMesh);
-        }
-    }
-
     void AActor::Draw()
     {
-        if (UMesh* Mesh = GetMesh())
+        if (UMesh* Mesh = GetComponentByClass<UMesh>())
         {
             Mesh->DrawMesh();
         }
     }
 
-    FActorBounds AActor::GetBounds() const
+    FBounds AActor::GetBounds() const
     {
-        FActorBounds actorBounds;
+        FBounds actorBounds;
 
-        const UMesh* mesh = GetMesh();
+        const UMesh* mesh = GetComponentByClass<UMesh>();
         if (!mesh)
         {
             return actorBounds;
         }
 
-        const FMeshBounds meshBounds = mesh->GetBounds();
+        const FBounds meshBounds = mesh->GetBounds();
         if (!meshBounds.IsValid)
         {
             return actorBounds;
@@ -117,10 +94,10 @@ namespace Achengine
         }
 
         const glm::quat rotation = glm::angleAxis(glm::radians(GetActorRotation().Angle), glm::normalize(rotationAxis));
-        const glm::vec3 scaledLocalCenter = meshBounds.LocalCenter * scale;
+        const glm::vec3 scaledLocalCenter = meshBounds.Center * scale;
         const glm::vec3 worldCenterOffset = rotation * scaledLocalCenter;
 
-        const glm::vec3 scaledExtents = meshBounds.LocalExtents * scale;
+        const glm::vec3 scaledExtents = meshBounds.Extents * scale;
         const glm::mat3 rotationMat = glm::mat3_cast(rotation);
         const glm::mat3 absRotationMat = glm::mat3(
             glm::abs(rotationMat[0]),
@@ -130,7 +107,7 @@ namespace Achengine
 
         actorBounds.Center = GetActorLocation() + worldCenterOffset;
         actorBounds.Extents = absRotationMat * scaledExtents;
-        actorBounds.SphereRadius = meshBounds.LocalSphereRadius * glm::max(scale.x, glm::max(scale.y, scale.z));
+        actorBounds.SphereRadius = meshBounds.SphereRadius * glm::max(scale.x, glm::max(scale.y, scale.z));
         actorBounds.IsValid = true;
         return actorBounds;
     }

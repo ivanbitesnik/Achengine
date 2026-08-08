@@ -13,9 +13,9 @@ namespace Achengine
 #else
         m_ShaderPath = "assets/shaders/BasicWater.glsl";
 #endif
-    		m_Bounds.LocalCenter = glm::vec3(0.0f, 0.0f, 0.0f);
-    		m_Bounds.LocalExtents = glm::vec3(1.0f, 1.0f, 1.0f);
-    		m_Bounds.LocalSphereRadius = glm::length(m_Bounds.LocalExtents);
+    		m_Bounds.Center = glm::vec3(0.0f, 0.0f, 0.0f);
+    		m_Bounds.Extents = glm::vec3(1.0f, 1.0f, 1.0f);
+    		m_Bounds.SphereRadius = glm::length(m_Bounds.Extents);
     		m_Bounds.IsValid = true;
         Initialize();
     }

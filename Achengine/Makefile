@@ -100,8 +100,12 @@ endif
 OBJECTS := \
 	$(OBJDIR)/Achenginepch.o \
 	$(OBJDIR)/Actor.o \
+	$(OBJDIR)/ActorComponent.o \
+	$(OBJDIR)/CameraComponent.o \
 	$(OBJDIR)/LightComponent.o \
 	$(OBJDIR)/Mesh.o \
+	$(OBJDIR)/Player.o \
+	$(OBJDIR)/PlayerController.o \
 	$(OBJDIR)/WaterMesh.o \
 	$(OBJDIR)/WorldActorCache.o \
 	$(OBJDIR)/Application.o \
@@ -147,7 +151,6 @@ endif
 
 $(TARGET): $(GCH) ${CUSTOMFILES} $(OBJECTS) $(LDDEPS) $(RESOURCES) | $(TARGETDIR)
 	@echo Linking Achengine
-	$(SILENT) rm -f "$(TARGET)"
 	$(SILENT) $(LINKCMD)
 	$(POSTBUILDCMDS)
 
@@ -200,10 +203,22 @@ $(OBJDIR)/Achenginepch.o: src/Achengine/Achenginepch.cpp
 $(OBJDIR)/Actor.o: src/Achengine/Actor/Actor.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/ActorComponent.o: src/Achengine/Actor/ActorComponent.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/CameraComponent.o: src/Achengine/Actor/CameraComponent.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/LightComponent.o: src/Achengine/Actor/LightComponent.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Mesh.o: src/Achengine/Actor/Mesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/Player.o: src/Achengine/Actor/Player.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/PlayerController.o: src/Achengine/Actor/PlayerController.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/WaterMesh.o: src/Achengine/Actor/WaterMesh.cpp
