@@ -62,6 +62,25 @@ namespace Achengine
         ActorComponents.push_back(NewComponent);
     }
 
+    bool AActor::RemoveActorComponent(UActorComponent* ComponentToRemove)
+    {
+        if (!ComponentToRemove)
+        {
+            return false;
+        }
+
+        const auto it = std::find(ActorComponents.begin(), ActorComponents.end(), ComponentToRemove);
+        if (it == ActorComponents.end())
+        {
+            return false;
+        }
+
+        (*it)->SetOwner(nullptr);
+        delete *it;
+        ActorComponents.erase(it);
+        return true;
+    }
+
     void AActor::Draw()
     {
         if (UMesh* Mesh = GetComponentByClass<UMesh>())

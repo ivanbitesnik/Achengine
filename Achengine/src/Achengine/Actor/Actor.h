@@ -15,6 +15,7 @@ namespace Achengine
             virtual void Tick(float DeltaTime);
             
             void AddActorComponent(UActorComponent* NewComponent);
+            bool RemoveActorComponent(UActorComponent* ComponentToRemove);
 
             template<class T>
             T* GetComponentByClass() const
@@ -29,6 +30,8 @@ namespace Achengine
 
                 return nullptr;
             };
+
+            const std::vector<UActorComponent*>& GetActorComponents() const { return ActorComponents; }
 
             void SetActorName(const std::string& NewName) { ActorName = NewName; }
             const std::string& GetActorName() const { return ActorName; }

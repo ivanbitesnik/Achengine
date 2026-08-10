@@ -8,12 +8,14 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
+#include <functional>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
@@ -694,6 +696,8 @@ namespace
 		return Achengine::format("[%.6f, %.6f, %.6f]", value.x, value.y, value.z);
 	}
 
+	static std::string ResolvePathRelativeToFile(const std::string& sourceFilePath, const std::string& candidatePath);
+
 	static bool JsonReadObjectField(const FJsonValue& object, const std::string& key, FJsonValue& outValue)
 	{
 		if (object.Type != FJsonValue::EType::Object)
@@ -754,6 +758,79 @@ namespace
 		outValue = glm::vec3((float)field.ArrayValue[0].NumberValue, (float)field.ArrayValue[1].NumberValue, (float)field.ArrayValue[2].NumberValue);
 		return true;
 	}
+
+	static bool JsonReadIntField(const FJsonValue& object, const std::string& key, int& outValue)
+	{
+		FJsonValue field;
+		if (!JsonReadObjectField(object, key, field) || field.Type != FJsonValue::EType::Number)
+		{
+			return false;
+		}
+
+		outValue = (int)field.NumberValue;
+		return true;
+	}
+
+	static std::string GetComponentTypeTag(const Achengine::UActorComponent* component)
+	{
+		if (!component)
+		{
+			return "component";
+		}
+
+		if (dynamic_cast<const Achengine::UWaterMesh*>(component))
+		{
+			return "water";
+		}
+		if (dynamic_cast<const Achengine::UMesh*>(component))
+		{
+			return "mesh";
+		}
+		if (dynamic_cast<const Achengine::ULightComponent*>(component))
+		{
+			return "light";
+		}
+		if (dynamic_cast<const Achengine::UCameraComponent*>(component))
+		{
+			return "camera";
+		}
+
+		return "component";
+	}
+
+	static bool ComponentMatchesTypeTag(const Achengine::UActorComponent* component, const std::string& typeTag)
+	{
+		if (typeTag == "component" || typeTag.empty())
+		{
+			return component != nullptr;
+		}
+
+		return GetComponentTypeTag(component) == typeTag;
+	}
+
+	static Achengine::UActorComponent* CreateComponentFromTypeTag(const std::string& typeTag)
+	{
+		if (typeTag == "mesh")
+		{
+			return new Achengine::UMesh();
+		}
+		if (typeTag == "water")
+		{
+			return new Achengine::UWaterMesh();
+		}
+		if (typeTag == "light")
+		{
+			return new Achengine::ULightComponent();
+		}
+		if (typeTag == "camera")
+		{
+			return new Achengine::UCameraComponent();
+		}
+
+		return nullptr;
+	}
+
+#include "ComponentReflection.inl"
 
 	enum class EActorTemplateLoadResult
 	{
@@ -871,6 +948,269 @@ namespace
 		return true;
 	}
 
+	enum class EJsonAssetType
+	{
+		Unknown,
+		Map,
+		ActorTemplate
+	};
+
+	static EJsonAssetType ClassifyJsonAssetFile(const std::string& filePath)
+	{
+		FJsonValue root;
+		std::string parseError;
+		if (!ParseJsonFile(filePath, root, parseError))
+		{
+			return EJsonAssetType::Unknown;
+		}
+
+		std::string templateName;
+		FJsonValue componentsValue;
+		if (JsonReadStringField(root, "templateName", templateName) &&
+			JsonReadObjectField(root, "components", componentsValue) &&
+			componentsValue.Type == FJsonValue::EType::Array)
+		{
+			return EJsonAssetType::ActorTemplate;
+		}
+
+		FJsonValue actorsValue;
+		if (JsonReadObjectField(root, "actors", actorsValue) &&
+			actorsValue.Type == FJsonValue::EType::Array)
+		{
+			return EJsonAssetType::Map;
+		}
+
+		return EJsonAssetType::Unknown;
+	}
+
+	struct FTemplateEditorComponent
+	{
+		std::string Type;
+
+		std::string ModelPath = "../models/Cube.fbx";
+
+		bool HasTransform = false;
+		glm::vec3 TransformLocation = glm::vec3(0.0f);
+		glm::vec3 TransformRotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+		float TransformRotationAngle = 0.0f;
+		glm::vec3 TransformScale = glm::vec3(1.0f);
+
+		bool HasLight = false;
+		glm::vec3 LightColor = glm::vec3(1.0f, 0.95f, 0.85f);
+		glm::vec3 LightAmbient = glm::vec3(0.15f, 0.14f, 0.12f);
+		glm::vec3 LightDiffuse = glm::vec3(0.9f, 0.8f, 0.7f);
+		glm::vec3 LightSpecular = glm::vec3(1.0f, 0.95f, 0.9f);
+		float LightConstant = 1.0f;
+		float LightLinear = 0.022f;
+		float LightQuadratic = 0.0019f;
+
+		bool HasCamera = false;
+		float CameraFov = 90.0f;
+		float CameraNearClip = 0.1f;
+		float CameraFarClip = 1000.0f;
+	};
+
+	struct FActorTemplateEditorState
+	{
+		bool IsActive = false;
+		std::string FilePath;
+		char TemplateName[128] = {};
+		std::vector<FTemplateEditorComponent> Components;
+		int SelectedComponentIndex = -1;
+		std::string Status;
+	};
+
+	static FActorTemplateEditorState g_ActorTemplateEditor;
+
+	static void ResetActorTemplateEditor()
+	{
+		g_ActorTemplateEditor = FActorTemplateEditorState();
+	}
+
+	static bool LoadActorTemplateEditorFromFile(const std::string& filePath, std::string& outError)
+	{
+		FJsonValue root;
+		if (!ParseJsonFile(filePath, root, outError))
+		{
+			return false;
+		}
+
+		std::string templateName;
+		FJsonValue componentsValue;
+		if (!JsonReadStringField(root, "templateName", templateName) ||
+			!JsonReadObjectField(root, "components", componentsValue) ||
+			componentsValue.Type != FJsonValue::EType::Array)
+		{
+			outError = "JSON is not an actor template";
+			return false;
+		}
+
+		ResetActorTemplateEditor();
+		g_ActorTemplateEditor.IsActive = true;
+		g_ActorTemplateEditor.FilePath = filePath;
+		std::strncpy(g_ActorTemplateEditor.TemplateName, templateName.c_str(), sizeof(g_ActorTemplateEditor.TemplateName) - 1);
+		g_ActorTemplateEditor.TemplateName[sizeof(g_ActorTemplateEditor.TemplateName) - 1] = '\0';
+		g_ActorTemplateEditor.Status = "Template loaded";
+
+		for (const FJsonValue& componentValue : componentsValue.ArrayValue)
+		{
+			if (componentValue.Type != FJsonValue::EType::Object)
+			{
+				continue;
+			}
+
+			FTemplateEditorComponent component;
+			if (!JsonReadStringField(componentValue, "type", component.Type) || component.Type.empty())
+			{
+				component.Type = "unknown";
+			}
+
+			if (component.Type == "mesh")
+			{
+				JsonReadStringField(componentValue, "modelPath", component.ModelPath);
+			}
+
+			if (component.Type == "transform")
+			{
+				component.HasTransform = true;
+				JsonReadVec3Field(componentValue, "location", component.TransformLocation);
+				JsonReadVec3Field(componentValue, "rotationAxis", component.TransformRotationAxis);
+				JsonReadNumberField(componentValue, "rotationAngle", component.TransformRotationAngle);
+				JsonReadVec3Field(componentValue, "scale", component.TransformScale);
+			}
+
+			FJsonValue transformValue;
+			if (JsonReadObjectField(componentValue, "transform", transformValue) && transformValue.Type == FJsonValue::EType::Object)
+			{
+				component.HasTransform = true;
+				JsonReadVec3Field(transformValue, "location", component.TransformLocation);
+				JsonReadVec3Field(transformValue, "rotationAxis", component.TransformRotationAxis);
+				JsonReadNumberField(transformValue, "rotationAngle", component.TransformRotationAngle);
+				JsonReadVec3Field(transformValue, "scale", component.TransformScale);
+			}
+
+			FJsonValue lightValue;
+			if (JsonReadObjectField(componentValue, "light", lightValue) && lightValue.Type == FJsonValue::EType::Object)
+			{
+				component.HasLight = true;
+				JsonReadVec3Field(lightValue, "color", component.LightColor);
+				JsonReadVec3Field(lightValue, "ambient", component.LightAmbient);
+				JsonReadVec3Field(lightValue, "diffuse", component.LightDiffuse);
+				JsonReadVec3Field(lightValue, "specular", component.LightSpecular);
+				JsonReadNumberField(lightValue, "constant", component.LightConstant);
+				JsonReadNumberField(lightValue, "linear", component.LightLinear);
+				JsonReadNumberField(lightValue, "quadratic", component.LightQuadratic);
+			}
+
+			FJsonValue cameraValue;
+			if (JsonReadObjectField(componentValue, "camera", cameraValue) && cameraValue.Type == FJsonValue::EType::Object)
+			{
+				component.HasCamera = true;
+				JsonReadNumberField(cameraValue, "fov", component.CameraFov);
+				JsonReadNumberField(cameraValue, "nearClip", component.CameraNearClip);
+				JsonReadNumberField(cameraValue, "farClip", component.CameraFarClip);
+			}
+
+			if (glm::length(component.TransformRotationAxis) < 0.0001f)
+			{
+				component.TransformRotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+			}
+
+			g_ActorTemplateEditor.Components.push_back(component);
+		}
+
+		if (!g_ActorTemplateEditor.Components.empty())
+		{
+			g_ActorTemplateEditor.SelectedComponentIndex = 0;
+		}
+
+		return true;
+	}
+
+	static bool SaveActorTemplateEditorToFile(std::string& outError)
+	{
+		if (!g_ActorTemplateEditor.IsActive || g_ActorTemplateEditor.FilePath.empty())
+		{
+			outError = "No active actor template selected";
+			return false;
+		}
+
+		const std::string templateName = g_ActorTemplateEditor.TemplateName;
+		if (templateName.empty())
+		{
+			outError = "Template name cannot be empty";
+			return false;
+		}
+
+		std::ostringstream out;
+		out << "{\n";
+		out << "  \"templateName\": \"" << JsonEscape(templateName) << "\",\n";
+		out << "  \"components\": [\n";
+
+		for (size_t i = 0; i < g_ActorTemplateEditor.Components.size(); ++i)
+		{
+			const FTemplateEditorComponent& component = g_ActorTemplateEditor.Components[i];
+			out << "    {\n";
+			out << "      \"type\": \"" << JsonEscape(component.Type) << "\"";
+
+			if (component.Type == "mesh")
+			{
+				out << ",\n      \"modelPath\": \"" << JsonEscape(component.ModelPath) << "\"";
+			}
+
+			if (component.Type == "transform" && component.HasTransform)
+			{
+				out << ",\n      \"location\": " << JsonVec3(component.TransformLocation);
+				out << ",\n      \"rotationAxis\": " << JsonVec3(component.TransformRotationAxis);
+				out << ",\n      \"rotationAngle\": " << component.TransformRotationAngle;
+				out << ",\n      \"scale\": " << JsonVec3(component.TransformScale);
+			}
+			else if (component.HasTransform)
+			{
+				out << ",\n      \"transform\": {\n";
+				out << "        \"location\": " << JsonVec3(component.TransformLocation) << ",\n";
+				out << "        \"rotationAxis\": " << JsonVec3(component.TransformRotationAxis) << ",\n";
+				out << "        \"rotationAngle\": " << component.TransformRotationAngle << ",\n";
+				out << "        \"scale\": " << JsonVec3(component.TransformScale) << "\n";
+				out << "      }";
+			}
+
+			if (component.HasLight)
+			{
+				out << ",\n      \"light\": {\n";
+				out << "        \"color\": " << JsonVec3(component.LightColor) << ",\n";
+				out << "        \"ambient\": " << JsonVec3(component.LightAmbient) << ",\n";
+				out << "        \"diffuse\": " << JsonVec3(component.LightDiffuse) << ",\n";
+				out << "        \"specular\": " << JsonVec3(component.LightSpecular) << ",\n";
+				out << "        \"constant\": " << component.LightConstant << ",\n";
+				out << "        \"linear\": " << component.LightLinear << ",\n";
+				out << "        \"quadratic\": " << component.LightQuadratic << "\n";
+				out << "      }";
+			}
+
+			if (component.HasCamera)
+			{
+				out << ",\n      \"camera\": {\n";
+				out << "        \"fov\": " << component.CameraFov << ",\n";
+				out << "        \"nearClip\": " << component.CameraNearClip << ",\n";
+				out << "        \"farClip\": " << component.CameraFarClip << "\n";
+				out << "      }";
+			}
+
+			out << "\n    }";
+			if (i + 1 < g_ActorTemplateEditor.Components.size())
+			{
+				out << ",";
+			}
+			out << "\n";
+		}
+
+		out << "  ]\n";
+		out << "}\n";
+
+		return WriteTextFileAtomically(g_ActorTemplateEditor.FilePath, out.str(), outError);
+	}
+
 	static EActorTemplateLoadResult SpawnActorTemplateFromJson(const std::string& filePath, const glm::vec3& dropLocation, std::string& outStatus, Achengine::AActor** outSpawnedActor = nullptr, const std::string& templateType = "")
 	{
 		if (outSpawnedActor)
@@ -968,6 +1308,57 @@ namespace
 			else if (componentType == "water")
 			{
 				actor->AddActorComponent(new Achengine::UWaterMesh());
+			}
+			else if (componentType == "camera")
+			{
+				Achengine::UCameraComponent* cameraComponent = new Achengine::UCameraComponent();
+
+				FJsonValue componentTransformValue;
+				if (JsonReadObjectField(componentValue, "transform", componentTransformValue) && componentTransformValue.Type == FJsonValue::EType::Object)
+				{
+					glm::vec3 cameraRelativeLocation(0.0f);
+					glm::vec3 cameraRelativeRotationAxis(1.0f, 0.0f, 0.0f);
+					float cameraRelativeRotationAngle = 0.0f;
+
+					JsonReadVec3Field(componentTransformValue, "location", cameraRelativeLocation);
+					JsonReadVec3Field(componentTransformValue, "rotationAxis", cameraRelativeRotationAxis);
+					JsonReadNumberField(componentTransformValue, "rotationAngle", cameraRelativeRotationAngle);
+
+					if (glm::length(cameraRelativeRotationAxis) < 0.0001f)
+					{
+						cameraRelativeRotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+					}
+
+					cameraComponent->SetRelativeLocation(cameraRelativeLocation);
+					cameraComponent->SetRelativeRotation(glm::normalize(cameraRelativeRotationAxis), cameraRelativeRotationAngle);
+				}
+
+				FJsonValue cameraValue;
+				if (JsonReadObjectField(componentValue, "camera", cameraValue) && cameraValue.Type == FJsonValue::EType::Object)
+				{
+					float fov = cameraComponent->GetFieldOfView();
+					float nearClip = 0.1f;
+					float farClip = 1000.0f;
+
+					JsonReadNumberField(cameraValue, "fov", fov);
+					JsonReadNumberField(cameraValue, "nearClip", nearClip);
+					JsonReadNumberField(cameraValue, "farClip", farClip);
+
+					if (nearClip < 0.001f)
+					{
+						nearClip = 0.001f;
+					}
+					if (farClip <= nearClip)
+					{
+						farClip = nearClip + 1.0f;
+					}
+
+					cameraComponent->SetFieldOfView(fov);
+					cameraComponent->SetClipPlanes(nearClip, farClip);
+					cameraComponent->UpdateProjection();
+				}
+
+				actor->AddActorComponent(cameraComponent);
 			}
 			else if (componentType == "light")
 			{
@@ -1211,6 +1602,31 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	}
 
 	// Render
+	Achengine::Application* app = Achengine::Application::Get();
+	const float windowWidth = app ? (float)app->GetWindow().GetWidth() : 1280.0f;
+	const float windowHeight = app ? (float)app->GetWindow().GetHeight() : 720.0f;
+	const float sceneViewportWidth = glm::max(1.0f, windowWidth - m_OutlinerWidth);
+	const float sceneViewportHeight = glm::max(1.0f, windowHeight - m_TopMapPanelHeight - m_AssetBrowserHeight);
+	const float sceneViewportX = 0.0f;
+	const float sceneViewportY = glm::max(0.0f, m_AssetBrowserHeight);
+
+	if (m_CameraController && !m_IsPlaying)
+	{
+		if (Achengine::EditorCamera* editorCamera = dynamic_cast<Achengine::EditorCamera*>(m_CameraController->GetCamera()))
+		{
+			editorCamera->SetViewportSize(sceneViewportWidth, sceneViewportHeight);
+		}
+	}
+
+	if (m_IsPlaying && m_PlayerActor)
+	{
+		if (Achengine::UCameraComponent* playerCamera = m_PlayerActor->GetCameraComponent())
+		{
+			playerCamera->SetViewportSize(sceneViewportWidth, sceneViewportHeight);
+		}
+	}
+
+	Achengine::RenderCommand::SetViewport((uint32_t)sceneViewportX, (uint32_t)sceneViewportY, (uint32_t)sceneViewportWidth, (uint32_t)sceneViewportHeight);
 	Achengine::RenderCommand::SetClearColor({ 0.4f, 0.4f, 0.8f, 0.3f });
 	Achengine::RenderCommand::Clear();
 
@@ -1232,6 +1648,9 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 		glEnable(GL_DEPTH_TEST);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
+
+	// Restore full framebuffer viewport for ImGui rendering.
+	Achengine::RenderCommand::SetViewport(0, 0, (uint32_t)windowWidth, (uint32_t)windowHeight);
 }
 
 bool Sandbox3D::SaveMapToFile(const std::string& filePath)
@@ -1318,6 +1737,36 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 			out << ",\n      \"modelPath\": \"" << JsonEscape(mesh->GetModelPath()) << "\"";
 		}
 
+		out << ",\n      \"components\": [";
+		const std::vector<Achengine::UActorComponent*>& components = actor->GetActorComponents();
+		if (!components.empty())
+		{
+			out << "\n";
+			bool wroteAnyComponent = false;
+			for (size_t componentIndex = 0; componentIndex < components.size(); ++componentIndex)
+			{
+				Achengine::UActorComponent* component = components[componentIndex];
+				if (!Achengine::UActorComponent::IsPointerAlive(component))
+				{
+					continue;
+				}
+
+				if (wroteAnyComponent)
+				{
+					out << ",\n";
+				}
+
+				wroteAnyComponent = true;
+				WriteComponentOverrideJson(out, component, componentIndex);
+			}
+
+			if (wroteAnyComponent)
+			{
+				out << "\n      ";
+			}
+		}
+		out << "]";
+
 		out << "\n    }";
 	}
 
@@ -1402,16 +1851,22 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 
 		std::string name;
 		std::string actorTemplate;
+		std::string modelPathOverride;
 		glm::vec3 location(0.0f);
 		glm::vec3 rotationAxis(1.0f, 0.0f, 0.0f);
 		glm::vec3 scale(1.0f);
 		float rotationAngle = 0.0f;
+		FJsonValue lightOverrideValue;
+		FJsonValue componentOverridesValue;
 		JsonReadStringField(actorValue, "name", name);
 		JsonReadStringField(actorValue, "actorTemplate", actorTemplate);
+		JsonReadStringField(actorValue, "modelPath", modelPathOverride);
 		JsonReadVec3Field(actorValue, "location", location);
 		JsonReadVec3Field(actorValue, "rotationAxis", rotationAxis);
 		JsonReadNumberField(actorValue, "rotationAngle", rotationAngle);
 		JsonReadVec3Field(actorValue, "scale", scale);
+		JsonReadObjectField(actorValue, "light", lightOverrideValue);
+		JsonReadObjectField(actorValue, "components", componentOverridesValue);
 
 		if (actorTemplate.empty())
 		{
@@ -1439,6 +1894,110 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 			spawnedFromTemplate->SetActorLocation(location);
 			spawnedFromTemplate->SetActorRotation(glm::normalize(rotationAxis), rotationAngle);
 			spawnedFromTemplate->SetActorScale(scale);
+
+			if (!modelPathOverride.empty())
+			{
+				if (Achengine::UMesh* meshComponent = spawnedFromTemplate->GetComponentByClass<Achengine::UMesh>())
+				{
+					if (!dynamic_cast<Achengine::UWaterMesh*>(meshComponent))
+					{
+						const std::string resolvedModelPath = ResolvePathRelativeToFile(filePath, modelPathOverride);
+						if (FileExists(resolvedModelPath))
+						{
+							meshComponent->ReloadModel(resolvedModelPath);
+						}
+						else if (FileExists(modelPathOverride))
+						{
+							meshComponent->ReloadModel(modelPathOverride);
+						}
+					}
+				}
+			}
+
+			if (lightOverrideValue.Type == FJsonValue::EType::Object)
+			{
+				if (Achengine::ULightComponent* lightComponent = spawnedFromTemplate->GetComponentByClass<Achengine::ULightComponent>())
+				{
+					if (Achengine::FLightSource* ls = lightComponent->GetLightSource())
+					{
+						JsonReadVec3Field(lightOverrideValue, "color", ls->color);
+						JsonReadVec3Field(lightOverrideValue, "ambient", ls->ambient);
+						JsonReadVec3Field(lightOverrideValue, "diffuse", ls->diffuse);
+						JsonReadVec3Field(lightOverrideValue, "specular", ls->specular);
+						JsonReadNumberField(lightOverrideValue, "constant", ls->constant);
+						JsonReadNumberField(lightOverrideValue, "linear", ls->linear);
+						JsonReadNumberField(lightOverrideValue, "quadratic", ls->quadratic);
+					}
+				}
+			}
+
+			if (componentOverridesValue.Type == FJsonValue::EType::Array)
+			{
+				std::vector<Achengine::UActorComponent*> availableComponents;
+				for (Achengine::UActorComponent* component : spawnedFromTemplate->GetActorComponents())
+				{
+					availableComponents.push_back(component);
+				}
+
+				std::vector<bool> consumedComponents(availableComponents.size(), false);
+
+				for (const FJsonValue& componentValue : componentOverridesValue.ArrayValue)
+				{
+					if (componentValue.Type != FJsonValue::EType::Object)
+					{
+						continue;
+					}
+
+					std::string componentTypeTag = "component";
+					JsonReadStringField(componentValue, "type", componentTypeTag);
+
+					Achengine::UActorComponent* targetComponent = nullptr;
+					int serializedIndex = -1;
+					if (JsonReadIntField(componentValue, "index", serializedIndex) &&
+						serializedIndex >= 0 &&
+						(size_t)serializedIndex < availableComponents.size() &&
+						ComponentMatchesTypeTag(availableComponents[(size_t)serializedIndex], componentTypeTag))
+					{
+						targetComponent = availableComponents[(size_t)serializedIndex];
+						consumedComponents[(size_t)serializedIndex] = true;
+					}
+
+					if (!targetComponent)
+					{
+						for (size_t i = 0; i < availableComponents.size(); ++i)
+						{
+							if (consumedComponents[i])
+							{
+								continue;
+							}
+
+							if (ComponentMatchesTypeTag(availableComponents[i], componentTypeTag))
+							{
+								targetComponent = availableComponents[i];
+								consumedComponents[i] = true;
+								break;
+							}
+						}
+					}
+
+					if (!targetComponent)
+					{
+						Achengine::UActorComponent* createdComponent = CreateComponentFromTypeTag(componentTypeTag);
+						if (createdComponent)
+						{
+							spawnedFromTemplate->AddActorComponent(createdComponent);
+							availableComponents.push_back(createdComponent);
+							consumedComponents.push_back(true);
+							targetComponent = createdComponent;
+						}
+					}
+
+					if (targetComponent)
+					{
+						ApplyComponentOverrideFromJson(targetComponent, componentValue, filePath);
+					}
+				}
+			}
 
 			if (Achengine::UMesh* spawnedMesh = spawnedFromTemplate->GetComponentByClass<Achengine::UMesh>())
 			{
@@ -1495,6 +2054,10 @@ glm::vec3 Sandbox3D::GetActiveSceneCameraPosition(const Achengine::Camera* camer
 
 void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutlinerWidth, float maxOutlinerWidth)
 {
+	static Achengine::UActorComponent* s_ActiveComponent = nullptr;
+	static std::unordered_map<const Achengine::UActorComponent*, std::array<char, 512>> s_ModelPathEditBuffers;
+	static std::string s_ComponentStatus;
+
 	const float usableAssetWidth = viewport->WorkSize.x - m_OutlinerWidth;
 	ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + usableAssetWidth, viewport->WorkPos.y), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(m_OutlinerWidth, viewport->WorkSize.y), ImGuiCond_Always);
@@ -1510,93 +2073,267 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 		m_OutlinerWidth = maxOutlinerWidth;
 	}
 
-	if (Achengine::WorldActorCache* Cache = Achengine::WorldActorCache::Get())
+	Achengine::WorldActorCache* Cache = Achengine::WorldActorCache::Get();
+	if (!Cache)
 	{
-		std::vector<Achengine::AActor*> actors;
-		for (Achengine::AActor* actor : Cache->GetActorCache())
-		{
-			actors.push_back(actor);
-		}
-		std::sort(actors.begin(), actors.end());
+		ImGui::TextUnformatted("World cache unavailable");
+		ImGui::End();
+		return;
+	}
+	std::vector<Achengine::AActor*> actors;
+	for (Achengine::AActor* actor : Cache->GetActorCache())
+	{
+		actors.push_back(actor);
+	}
+	std::sort(actors.begin(), actors.end());
 
-		for (auto it = m_SelectedActors.begin(); it != m_SelectedActors.end();)
+	for (auto it = m_SelectedActors.begin(); it != m_SelectedActors.end();)
+	{
+		if (std::find(actors.begin(), actors.end(), *it) == actors.end())
 		{
-			if (std::find(actors.begin(), actors.end(), *it) == actors.end())
-			{
-				it = m_SelectedActors.erase(it);
-			}
-			else
-			{
-				++it;
-			}
+			it = m_SelectedActors.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	if (m_ActiveActor && std::find(actors.begin(), actors.end(), m_ActiveActor) == actors.end())
+	{
+		m_ActiveActor = nullptr;
+		s_ActiveComponent = nullptr;
+		ResetActorTemplateEditor();
+	}
+	if (!m_ActiveActor && !m_SelectedActors.empty())
+	{
+		m_ActiveActor = *m_SelectedActors.begin();
+		s_ActiveComponent = nullptr;
+		ResetActorTemplateEditor();
+	}
+
+	if (s_ActiveComponent)
+	{
+		if (!Achengine::UActorComponent::IsPointerAlive(s_ActiveComponent) || !m_ActiveActor || s_ActiveComponent->GetOwner() != m_ActiveActor)
+		{
+			s_ActiveComponent = nullptr;
+		}
+	}
+
+	ImGui::Text("Actors: %d", (int)actors.size());
+	ImGui::SameLine();
+	ImGui::TextUnformatted("(Ctrl-click for multiselect)");
+	ImGui::Separator();
+	if (m_IsPlaying)
+	{
+		ImGui::TextUnformatted("Selection disabled while in Play mode");
+	}
+	ImGui::BeginDisabled(m_IsPlaying);
+	ImGui::BeginChild("OutlinerActors", ImVec2(0.0f, 220.0f), true);
+	Achengine::AActor* previousActiveActor = m_ActiveActor;
+	for (Achengine::AActor* actor : actors)
+	{
+		std::string shaderName = "<none>";
+		if (Achengine::UMesh* mesh = actor->GetComponentByClass<Achengine::UMesh>())
+		{
+			shaderName = mesh->GetShaderName();
 		}
 
-		if (m_ActiveActor && std::find(actors.begin(), actors.end(), m_ActiveActor) == actors.end())
+		ImGui::PushID(actor);
+		const bool isSelected = m_SelectedActors.count(actor) > 0;
+		std::string label = Achengine::format("%s | %s", actor->GetActorName().c_str(), shaderName.c_str());
+		if (ImGui::Selectable(label.c_str(), isSelected))
 		{
-			m_ActiveActor = nullptr;
-		}
-		if (!m_ActiveActor && !m_SelectedActors.empty())
-		{
-			m_ActiveActor = *m_SelectedActors.begin();
-		}
-
-		ImGui::Text("Actors: %d", (int)actors.size());
-		ImGui::SameLine();
-		ImGui::TextUnformatted("(Ctrl-click for multiselect)");
-		ImGui::Separator();
-		if (m_IsPlaying)
-		{
-			ImGui::TextUnformatted("Selection disabled while in Play mode");
-		}
-		ImGui::BeginDisabled(m_IsPlaying);
-		ImGui::BeginChild("OutlinerActors", ImVec2(0.0f, 220.0f), true);
-		for (Achengine::AActor* actor : actors)
-		{
-			std::string shaderName = "<none>";
-			if (Achengine::UMesh* mesh = actor->GetComponentByClass<Achengine::UMesh>())
+			if (ImGui::GetIO().KeyCtrl)
 			{
-				shaderName = mesh->GetShaderName();
-			}
-
-			ImGui::PushID(actor);
-			const bool isSelected = m_SelectedActors.count(actor) > 0;
-			std::string label = Achengine::format("%s | %s", actor->GetActorName().c_str(), shaderName.c_str());
-			if (ImGui::Selectable(label.c_str(), isSelected))
-			{
-				if (ImGui::GetIO().KeyCtrl)
+				if (isSelected)
 				{
-					if (isSelected)
+					m_SelectedActors.erase(actor);
+					if (m_ActiveActor == actor)
 					{
-						m_SelectedActors.erase(actor);
-						if (m_ActiveActor == actor)
+						m_ActiveActor = m_SelectedActors.empty() ? nullptr : *m_SelectedActors.begin();
+						s_ActiveComponent = nullptr;
+						if (m_ActiveActor)
 						{
-							m_ActiveActor = m_SelectedActors.empty() ? nullptr : *m_SelectedActors.begin();
+							ResetActorTemplateEditor();
 						}
-					}
-					else
-					{
-						m_SelectedActors.insert(actor);
-						m_ActiveActor = actor;
 					}
 				}
 				else
 				{
-					m_SelectedActors.clear();
 					m_SelectedActors.insert(actor);
 					m_ActiveActor = actor;
+					s_ActiveComponent = nullptr;
+					ResetActorTemplateEditor();
 				}
 			}
-			ImGui::PopID();
+			else
+			{
+				m_SelectedActors.clear();
+				m_SelectedActors.insert(actor);
+				m_ActiveActor = actor;
+				s_ActiveComponent = nullptr;
+				ResetActorTemplateEditor();
+			}
+		}
+		ImGui::PopID();
+	}
+
+	if (previousActiveActor != m_ActiveActor)
+	{
+		s_ActiveComponent = nullptr;
+	}
+	ImGui::EndChild();
+	ImGui::EndDisabled();
+
+	if (m_IsPlaying)
+	{
+		ImGui::Separator();
+		ImGui::TextUnformatted("Editor transform and gizmo controls are hidden in Play mode");
+		ImGui::End();
+		return;
+	}
+
+	ImGui::Separator();
+	if (g_ActorTemplateEditor.IsActive)
+	{
+		ImGui::TextUnformatted("Selected Actor Template");
+		ImGui::TextWrapped("File: %s", g_ActorTemplateEditor.FilePath.c_str());
+		ImGui::InputText("Template Name", g_ActorTemplateEditor.TemplateName, sizeof(g_ActorTemplateEditor.TemplateName));
+
+		if (ImGui::Button("Add Template Component"))
+		{
+			ImGui::OpenPopup("OutlinerTemplateAddComponentPopup");
+		}
+		if (ImGui::BeginPopup("OutlinerTemplateAddComponentPopup"))
+		{
+			auto addTemplateComponent = [&](const char* type) {
+				FTemplateEditorComponent component;
+				component.Type = type;
+				component.HasTransform = std::string(type) == "camera" || std::string(type) == "transform";
+				component.HasLight = std::string(type) == "light";
+				component.HasCamera = std::string(type) == "camera";
+				g_ActorTemplateEditor.Components.push_back(component);
+				g_ActorTemplateEditor.SelectedComponentIndex = (int)g_ActorTemplateEditor.Components.size() - 1;
+				g_ActorTemplateEditor.Status = Achengine::format("Added component: %s", type);
+				ImGui::CloseCurrentPopup();
+			};
+
+			if (ImGui::MenuItem("mesh")) { addTemplateComponent("mesh"); }
+			if (ImGui::MenuItem("water")) { addTemplateComponent("water"); }
+			if (ImGui::MenuItem("light")) { addTemplateComponent("light"); }
+			if (ImGui::MenuItem("camera")) { addTemplateComponent("camera"); }
+			if (ImGui::MenuItem("playerStart")) { addTemplateComponent("playerStart"); }
+			if (ImGui::MenuItem("transform")) { addTemplateComponent("transform"); }
+			ImGui::EndPopup();
+		}
+
+		ImGui::SameLine();
+		const bool hasSelectedTemplateComponent = g_ActorTemplateEditor.SelectedComponentIndex >= 0 &&
+			g_ActorTemplateEditor.SelectedComponentIndex < (int)g_ActorTemplateEditor.Components.size();
+		if (ImGui::Button("Remove Template Component") && hasSelectedTemplateComponent)
+		{
+			g_ActorTemplateEditor.Components.erase(g_ActorTemplateEditor.Components.begin() + g_ActorTemplateEditor.SelectedComponentIndex);
+			if (g_ActorTemplateEditor.Components.empty())
+			{
+				g_ActorTemplateEditor.SelectedComponentIndex = -1;
+			}
+			else if (g_ActorTemplateEditor.SelectedComponentIndex >= (int)g_ActorTemplateEditor.Components.size())
+			{
+				g_ActorTemplateEditor.SelectedComponentIndex = (int)g_ActorTemplateEditor.Components.size() - 1;
+			}
+			g_ActorTemplateEditor.Status = "Removed template component";
+		}
+
+		ImGui::BeginChild("TemplateComponents", ImVec2(0.0f, 130.0f), true);
+		for (size_t i = 0; i < g_ActorTemplateEditor.Components.size(); ++i)
+		{
+			const std::string label = Achengine::format("%s ##templateComp_%d", g_ActorTemplateEditor.Components[i].Type.c_str(), (int)i);
+			if (ImGui::Selectable(label.c_str(), g_ActorTemplateEditor.SelectedComponentIndex == (int)i))
+			{
+				g_ActorTemplateEditor.SelectedComponentIndex = (int)i;
+			}
 		}
 		ImGui::EndChild();
-		ImGui::EndDisabled();
 
-		if (!m_IsPlaying)
+		if (hasSelectedTemplateComponent)
 		{
+			FTemplateEditorComponent& component = g_ActorTemplateEditor.Components[g_ActorTemplateEditor.SelectedComponentIndex];
 			ImGui::Separator();
-			ImGui::TextUnformatted("Selected Actor");
-			if (m_ActiveActor)
+			ImGui::Text("Editing component type: %s", component.Type.c_str());
+
+			if (component.Type == "mesh")
 			{
+				char modelPath[512] = {};
+				std::strncpy(modelPath, component.ModelPath.c_str(), sizeof(modelPath) - 1);
+				if (ImGui::InputText("Model Path", modelPath, sizeof(modelPath)))
+				{
+					component.ModelPath = modelPath;
+				}
+			}
+
+			if (component.Type == "transform" || component.Type == "camera")
+			{
+				component.HasTransform = true;
+				ImGui::DragFloat3("Location", &component.TransformLocation.x, 0.1f);
+				ImGui::DragFloat3("Rotation Axis", &component.TransformRotationAxis.x, 0.01f, -1.0f, 1.0f);
+				if (glm::length(component.TransformRotationAxis) < 0.0001f)
+				{
+					component.TransformRotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+				}
+				ImGui::DragFloat("Rotation Angle", &component.TransformRotationAngle, 0.25f, -360.0f, 360.0f);
+				ImGui::DragFloat3("Scale", &component.TransformScale.x, 0.05f, 0.01f, 1000.0f);
+			}
+
+			if (component.Type == "light")
+			{
+				component.HasLight = true;
+				ImGui::ColorEdit3("Color", &component.LightColor.x);
+				ImGui::ColorEdit3("Ambient", &component.LightAmbient.x);
+				ImGui::ColorEdit3("Diffuse", &component.LightDiffuse.x);
+				ImGui::ColorEdit3("Specular", &component.LightSpecular.x);
+				ImGui::DragFloat("Constant", &component.LightConstant, 0.01f, 0.0f, 20.0f);
+				ImGui::DragFloat("Linear", &component.LightLinear, 0.001f, 0.0f, 10.0f);
+				ImGui::DragFloat("Quadratic", &component.LightQuadratic, 0.0001f, 0.0f, 10.0f);
+			}
+
+			if (component.Type == "camera")
+			{
+				component.HasCamera = true;
+				ImGui::DragFloat("FOV", &component.CameraFov, 0.1f, 1.0f, 179.0f);
+				ImGui::DragFloat("Near Clip", &component.CameraNearClip, 0.01f, 0.001f, 1000.0f);
+				ImGui::DragFloat("Far Clip", &component.CameraFarClip, 1.0f, component.CameraNearClip + 0.001f, 100000.0f);
+				if (component.CameraFarClip <= component.CameraNearClip)
+				{
+					component.CameraFarClip = component.CameraNearClip + 0.001f;
+				}
+			}
+		}
+
+		ImGui::Separator();
+		if (ImGui::Button("Save Template JSON"))
+		{
+			std::string saveError;
+			if (SaveActorTemplateEditorToFile(saveError))
+			{
+				g_ActorTemplateEditor.Status = "Template saved";
+			}
+			else
+			{
+				g_ActorTemplateEditor.Status = Achengine::format("Save failed: %s", saveError.c_str());
+			}
+		}
+
+		if (!g_ActorTemplateEditor.Status.empty())
+		{
+			ImGui::TextWrapped("%s", g_ActorTemplateEditor.Status.c_str());
+		}
+	}
+	else
+	{
+		ImGui::TextUnformatted("Selected Actor");
+		if (m_ActiveActor)
+		{
 			ImGui::Text("Active: %s", m_ActiveActor->GetActorName().c_str());
 			ImGui::Text("Selected Count: %d", (int)m_SelectedActors.size());
 
@@ -1670,16 +2407,123 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				ImGui::DragFloat("Scale Snap", &m_ScaleSnapStep, 0.01f, 0.01f, 10.0f);
 			}
 			ImGui::TextUnformatted("Drag axis handles in viewport to transform selected actors.");
+
+			ImGui::Separator();
+			ImGui::TextUnformatted("Components");
+			if (ImGui::Button("Add Component"))
+			{
+				ImGui::OpenPopup("OutlinerAddComponentPopup");
+			}
+
+			if (ImGui::BeginPopup("OutlinerAddComponentPopup"))
+			{
+				if (ImGui::MenuItem("UMesh"))
+				{
+					std::string defaultModelPath = GetDefaultCubeModelPath();
+					if (!FileExists(defaultModelPath))
+					{
+						defaultModelPath.clear();
+					}
+
+					Achengine::UMesh* meshComponent = defaultModelPath.empty()
+						? new Achengine::UMesh()
+						: new Achengine::UMesh(defaultModelPath);
+					m_ActiveActor->AddActorComponent(meshComponent);
+					s_ActiveComponent = meshComponent;
+					SyncModelPathBufferForComponent(s_ActiveComponent, s_ModelPathEditBuffers);
+					s_ComponentStatus = "Added UMesh";
+					ImGui::CloseCurrentPopup();
+				}
+				if (ImGui::MenuItem("UWaterMesh"))
+				{
+					Achengine::UWaterMesh* waterMeshComponent = new Achengine::UWaterMesh();
+					m_ActiveActor->AddActorComponent(waterMeshComponent);
+					s_ActiveComponent = waterMeshComponent;
+					s_ComponentStatus = "Added UWaterMesh";
+					ImGui::CloseCurrentPopup();
+				}
+				if (ImGui::MenuItem("ULightComponent"))
+				{
+					Achengine::ULightComponent* lightComponent = new Achengine::ULightComponent();
+					m_ActiveActor->AddActorComponent(lightComponent);
+					s_ActiveComponent = lightComponent;
+					s_ComponentStatus = "Added ULightComponent";
+					ImGui::CloseCurrentPopup();
+				}
+				if (ImGui::MenuItem("UCameraComponent"))
+				{
+					Achengine::UCameraComponent* cameraComponent = new Achengine::UCameraComponent();
+					m_ActiveActor->AddActorComponent(cameraComponent);
+					s_ActiveComponent = cameraComponent;
+					s_ComponentStatus = "Added UCameraComponent";
+					ImGui::CloseCurrentPopup();
+				}
+
+				ImGui::EndPopup();
+			}
+
+			ImGui::SameLine();
+			if (s_ActiveComponent && ImGui::Button("Remove Selected Component"))
+			{
+				Achengine::UActorComponent* removedComponent = s_ActiveComponent;
+				if (m_ActiveActor->RemoveActorComponent(removedComponent))
+				{
+					s_ModelPathEditBuffers.erase(removedComponent);
+					s_ActiveComponent = nullptr;
+					s_ComponentStatus = "Component removed";
+				}
+				else
+				{
+					s_ComponentStatus = "Failed to remove component";
+				}
+			}
+
+			const std::vector<Achengine::UActorComponent*>& components = m_ActiveActor->GetActorComponents();
+			if (components.empty())
+			{
+				ImGui::TextUnformatted("No components");
 			}
 			else
 			{
-				ImGui::TextUnformatted("No actor selected");
+				ImGui::BeginChild("OutlinerComponents", ImVec2(0.0f, 140.0f), true);
+				for (size_t i = 0; i < components.size(); ++i)
+				{
+					Achengine::UActorComponent* component = components[i];
+					if (!Achengine::UActorComponent::IsPointerAlive(component))
+					{
+						continue;
+					}
+
+					const std::string itemLabel = Achengine::format("%s ##comp_%d", GetComponentDisplayName(component), (int)i);
+					if (ImGui::Selectable(itemLabel.c_str(), component == s_ActiveComponent))
+					{
+						s_ActiveComponent = component;
+						s_ComponentStatus.clear();
+						SyncModelPathBufferForComponent(s_ActiveComponent, s_ModelPathEditBuffers);
+					}
+				}
+				ImGui::EndChild();
+
+				if (s_ActiveComponent)
+				{
+					ImGui::Separator();
+					ImGui::TextUnformatted("Component Properties");
+					ImGui::PushID(s_ActiveComponent);
+					DrawDefaultComponentTransformProperties(s_ActiveComponent);
+					DrawReflectedComponentProperties(s_ActiveComponent, s_ModelPathEditBuffers, s_ComponentStatus);
+					ImGui::PopID();
+
+					if (!s_ComponentStatus.empty())
+					{
+						ImGui::TextWrapped("%s", s_ComponentStatus.c_str());
+					}
+				}
 			}
 		}
 		else
 		{
-			ImGui::Separator();
-			ImGui::TextUnformatted("Editor transform and gizmo controls are hidden in Play mode");
+			ImGui::TextUnformatted("No actor or template selected");
+			s_ActiveComponent = nullptr;
 		}
 	}
 
@@ -1740,6 +2584,7 @@ void Sandbox3D::RenderMapPanel(const ImGuiViewport* viewport, float topPanelWidt
 			cache->ClearActorCache();
 			m_SelectedActors.clear();
 			m_ActiveActor = nullptr;
+			ResetActorTemplateEditor();
 			m_ModelActor = nullptr;
 			m_ModelMesh = nullptr;
 			m_PlayerActor = nullptr;
@@ -2072,8 +2917,33 @@ void Sandbox3D::OnImGuiRender()
 				}
 				if (isJson)
 				{
-					std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
-					m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
+					const EJsonAssetType jsonType = ClassifyJsonAssetFile(entry.FullPath);
+					if (jsonType == EJsonAssetType::ActorTemplate)
+					{
+						std::string templateEditorError;
+						if (LoadActorTemplateEditorFromFile(entry.FullPath, templateEditorError))
+						{
+							m_SelectedActors.clear();
+							m_ActiveActor = nullptr;
+						}
+						else
+						{
+							ResetActorTemplateEditor();
+							m_MapStatus = Achengine::format("Template load failed: %s", templateEditorError.c_str());
+						}
+					}
+					else if (jsonType == EJsonAssetType::Map)
+					{
+						ResetActorTemplateEditor();
+						std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
+						m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
+						m_MapStatus = "Map selected";
+					}
+					else
+					{
+						ResetActorTemplateEditor();
+						m_MapStatus = "JSON is not a map or actor template";
+					}
 				}
 			}
 		}
@@ -2083,12 +2953,35 @@ void Sandbox3D::OnImGuiRender()
 		}
 		if (!entry.IsDirectory && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && isJson)
 		{
-			std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
-			m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
-			LoadMapFromFile(entry.FullPath);
-			if (m_IsPlaying)
+			const EJsonAssetType jsonType = ClassifyJsonAssetFile(entry.FullPath);
+			if (jsonType == EJsonAssetType::ActorTemplate)
 			{
-				EnsurePlaySessionActorPossession();
+				std::string templateEditorError;
+				if (LoadActorTemplateEditorFromFile(entry.FullPath, templateEditorError))
+				{
+					m_SelectedActors.clear();
+					m_ActiveActor = nullptr;
+				}
+				else
+				{
+					ResetActorTemplateEditor();
+					m_MapStatus = Achengine::format("Template load failed: %s", templateEditorError.c_str());
+				}
+			}
+			else if (jsonType == EJsonAssetType::Map)
+			{
+				ResetActorTemplateEditor();
+				std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
+				m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
+				LoadMapFromFile(entry.FullPath);
+				if (m_IsPlaying)
+				{
+					EnsurePlaySessionActorPossession();
+				}
+			}
+			else
+			{
+				m_MapStatus = "JSON is not a map or actor template";
 			}
 		}
 		if (!entry.IsDirectory && ImGui::BeginDragDropSource())
@@ -2099,6 +2992,373 @@ void Sandbox3D::OnImGuiRender()
 		}
 		ImGui::PopStyleColor();
 		ImGui::PopID();
+	}
+
+	if (ImGui::BeginPopupContextWindow("AssetBrowserEmptyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+	{
+		static bool requestOpenCreateActorPopup = false;
+		if (ImGui::Button("Create Actor"))
+		{
+			requestOpenCreateActorPopup = true;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+
+		if (requestOpenCreateActorPopup)
+		{
+			ImGui::OpenPopup("CreateActorConfigPopup");
+			requestOpenCreateActorPopup = false;
+		}
+	}
+
+	struct FComponentChoice
+	{
+		const char* ClassName;
+		const char* TemplateType;
+		bool Selectable;
+	};
+
+	static const FComponentChoice componentChoices[] = {
+		{"UActorComponent (base)", "actorComponent", false},
+		{"UMesh", "mesh", true},
+		{"UWaterMesh", "water", true},
+		{"ULightComponent", "light", true},
+		{"UCameraComponent", "camera", true}
+	};
+
+	static char createActorTemplateName[128] = "NewActorTemplate";
+	static char createActorFileName[128] = "NewActorTemplate.json";
+	static char createActorMeshModelPath[512] = "../models/Cube.fbx";
+	static std::vector<std::string> selectedComponentTypes;
+	static std::string createActorStatus;
+	static bool meshPickerInitialized = false;
+	static std::string meshPickerDirectory;
+	static float createActorLightColor[3] = {1.0f, 0.95f, 0.85f};
+	static float createActorLightAmbient[3] = {0.15f, 0.14f, 0.12f};
+	static float createActorLightDiffuse[3] = {0.9f, 0.8f, 0.7f};
+	static float createActorLightSpecular[3] = {1.0f, 0.95f, 0.9f};
+	static float createActorLightConstant = 1.0f;
+	static float createActorLightLinear = 0.022f;
+	static float createActorLightQuadratic = 0.0019f;
+	static float createActorCameraRelativeLocation[3] = {-15.0f, 0.0f, 0.0f};
+	static float createActorCameraRelativeRotationAxis[3] = {1.0f, 0.0f, 0.0f};
+	static float createActorCameraRelativeRotationAngle = 0.0f;
+	static float createActorCameraFov = 90.0f;
+	static float createActorCameraNearClip = 0.1f;
+	static float createActorCameraFarClip = 1000.0f;
+
+	if (ImGui::BeginPopupModal("CreateActorConfigPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextUnformatted("Create Actor Template");
+		ImGui::Separator();
+		ImGui::InputText("Template Name", createActorTemplateName, sizeof(createActorTemplateName));
+		ImGui::InputText("File Name", createActorFileName, sizeof(createActorFileName));
+
+		if (ImGui::Button("Add component"))
+		{
+			ImGui::OpenPopup("AddComponentScrollPopup");
+		}
+		ImGui::SameLine();
+		ImGui::Text("Selected: %d", (int)selectedComponentTypes.size());
+
+		if (ImGui::BeginPopup("AddComponentScrollPopup"))
+		{
+			ImGui::TextUnformatted("ActorComponent classes");
+			ImGui::Separator();
+			ImGui::BeginChild("ComponentScrollBox", ImVec2(320.0f, 180.0f), true);
+			for (const FComponentChoice& choice : componentChoices)
+			{
+				if (!choice.Selectable)
+				{
+					ImGui::TextDisabled("%s", choice.ClassName);
+					continue;
+				}
+
+				const bool isSelected = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), choice.TemplateType) != selectedComponentTypes.end();
+				const std::string label = std::string(choice.ClassName) + " (" + choice.TemplateType + ")";
+				if (ImGui::Selectable(label.c_str(), isSelected))
+				{
+					if (isSelected)
+					{
+						auto it = std::remove(selectedComponentTypes.begin(), selectedComponentTypes.end(), choice.TemplateType);
+						selectedComponentTypes.erase(it, selectedComponentTypes.end());
+					}
+					else
+					{
+						selectedComponentTypes.push_back(choice.TemplateType);
+					}
+				}
+			}
+			ImGui::EndChild();
+			if (ImGui::Button("Close"))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
+		if (!selectedComponentTypes.empty())
+		{
+			ImGui::Separator();
+			ImGui::TextUnformatted("Configured components:");
+			int removeComponentIndex = -1;
+			for (size_t i = 0; i < selectedComponentTypes.size(); ++i)
+			{
+				const std::string& componentType = selectedComponentTypes[i];
+				ImGui::PushID((int)i + 50000);
+				ImGui::BulletText("%s", componentType.c_str());
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Remove"))
+				{
+					removeComponentIndex = (int)i;
+				}
+				ImGui::PopID();
+			}
+
+			if (removeComponentIndex >= 0)
+			{
+				selectedComponentTypes.erase(selectedComponentTypes.begin() + removeComponentIndex);
+			}
+
+			if (ImGui::Button("Clear All Components"))
+			{
+				selectedComponentTypes.clear();
+			}
+		}
+
+		const bool hasMesh = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "mesh") != selectedComponentTypes.end();
+		const bool hasLight = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "light") != selectedComponentTypes.end();
+		const bool hasCamera = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "camera") != selectedComponentTypes.end();
+
+		if (hasMesh || hasLight || hasCamera)
+		{
+			ImGui::Separator();
+			ImGui::TextUnformatted("Component properties:");
+
+			if (hasMesh)
+			{
+				ImGui::TextUnformatted("mesh");
+				ImGui::InputText("Mesh Model Path", createActorMeshModelPath, sizeof(createActorMeshModelPath));
+				ImGui::SameLine();
+				if (ImGui::Button("Pick..."))
+				{
+					if (!meshPickerInitialized)
+					{
+						meshPickerDirectory = browserDirectory.empty() ? GetDirectoryFromPath(m_ModelPathBuffer) : browserDirectory;
+						meshPickerInitialized = true;
+					}
+					ImGui::OpenPopup("PickMeshModelPathPopup");
+				}
+
+				if (ImGui::BeginPopup("PickMeshModelPathPopup"))
+				{
+					ImGui::TextUnformatted("Pick Mesh Model File");
+					ImGui::Separator();
+
+					if (ImGui::Button("Up"))
+					{
+						const size_t slash = meshPickerDirectory.find_last_of("/\\");
+						if (slash != std::string::npos && slash > 0)
+						{
+							meshPickerDirectory = meshPickerDirectory.substr(0, slash);
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Here"))
+					{
+						meshPickerDirectory = browserDirectory.empty() ? GetDirectoryFromPath(m_ModelPathBuffer) : browserDirectory;
+					}
+					ImGui::SameLine();
+					ImGui::TextWrapped("%s", meshPickerDirectory.c_str());
+
+					ImGui::BeginChild("MeshPickerFileList", ImVec2(420.0f, 220.0f), true);
+					std::vector<FBrowserEntry> pickerEntries = ReadDirectoryEntries(meshPickerDirectory);
+					if (pickerEntries.empty())
+					{
+						ImGui::TextUnformatted("No model files/folders found here.");
+					}
+
+					for (const FBrowserEntry& pickerEntry : pickerEntries)
+					{
+						if (!pickerEntry.IsDirectory && !IsModelFile(pickerEntry.Name))
+						{
+							continue;
+						}
+
+						const std::string pickerLabel = pickerEntry.IsDirectory
+							? ("[DIR] " + pickerEntry.Name)
+							: ("[MODEL] " + pickerEntry.Name);
+
+						if (ImGui::Selectable(pickerLabel.c_str(), false))
+						{
+							if (pickerEntry.IsDirectory)
+							{
+								meshPickerDirectory = pickerEntry.FullPath;
+							}
+							else
+							{
+								std::strncpy(createActorMeshModelPath, pickerEntry.FullPath.c_str(), sizeof(createActorMeshModelPath) - 1);
+								createActorMeshModelPath[sizeof(createActorMeshModelPath) - 1] = '\0';
+								ImGui::CloseCurrentPopup();
+							}
+						}
+					}
+					ImGui::EndChild();
+
+					if (ImGui::Button("Close"))
+					{
+						ImGui::CloseCurrentPopup();
+					}
+
+					ImGui::EndPopup();
+				}
+			}
+
+			if (hasLight)
+			{
+				ImGui::Spacing();
+				ImGui::TextUnformatted("light");
+				ImGui::ColorEdit3("Light Color", createActorLightColor);
+				ImGui::ColorEdit3("Light Ambient", createActorLightAmbient);
+				ImGui::ColorEdit3("Light Diffuse", createActorLightDiffuse);
+				ImGui::ColorEdit3("Light Specular", createActorLightSpecular);
+				ImGui::InputFloat("Light Constant", &createActorLightConstant);
+				ImGui::InputFloat("Light Linear", &createActorLightLinear);
+				ImGui::InputFloat("Light Quadratic", &createActorLightQuadratic);
+			}
+
+			if (hasCamera)
+			{
+				ImGui::Spacing();
+				ImGui::TextUnformatted("camera");
+				ImGui::InputFloat3("Camera Relative Location", createActorCameraRelativeLocation);
+				ImGui::InputFloat3("Camera Rotation Axis", createActorCameraRelativeRotationAxis);
+				ImGui::InputFloat("Camera Rotation Angle", &createActorCameraRelativeRotationAngle);
+				ImGui::InputFloat("Camera FOV", &createActorCameraFov);
+				ImGui::InputFloat("Camera Near Clip", &createActorCameraNearClip);
+				ImGui::InputFloat("Camera Far Clip", &createActorCameraFarClip);
+			}
+		}
+
+		ImGui::Separator();
+		if (ImGui::Button("Confirm"))
+		{
+			createActorStatus.clear();
+
+			std::string fileName = createActorFileName;
+			if (fileName.empty())
+			{
+				fileName = std::string(createActorTemplateName) + ".json";
+			}
+			if (fileName.find('.') == std::string::npos)
+			{
+				fileName += ".json";
+			}
+
+			if (std::string(createActorTemplateName).empty())
+			{
+				createActorStatus = "Template name cannot be empty";
+			}
+			else if (selectedComponentTypes.empty())
+			{
+				createActorStatus = "Select at least one component";
+			}
+			else
+			{
+				std::string outPath = browserDirectory;
+				if (outPath.empty())
+				{
+					outPath = ".";
+				}
+				if (outPath.back() != '/' && outPath.back() != '\\')
+				{
+					outPath += '/';
+				}
+				outPath += fileName;
+
+				std::ostringstream actorJson;
+				actorJson << "{\n";
+				actorJson << "  \"templateName\": \"" << JsonEscape(createActorTemplateName) << "\",\n";
+				actorJson << "  \"components\": [\n";
+
+				for (size_t i = 0; i < selectedComponentTypes.size(); ++i)
+				{
+					const std::string& componentType = selectedComponentTypes[i];
+					actorJson << "    {\n";
+					actorJson << "      \"type\": \"" << JsonEscape(componentType) << "\"";
+
+					if (componentType == "mesh")
+					{
+						actorJson << ",\n      \"modelPath\": \"" << JsonEscape(createActorMeshModelPath) << "\"\n";
+					}
+					else if (componentType == "light")
+					{
+						actorJson << ",\n      \"light\": {\n";
+						actorJson << "        \"color\": [" << createActorLightColor[0] << ", " << createActorLightColor[1] << ", " << createActorLightColor[2] << "],\n";
+						actorJson << "        \"ambient\": [" << createActorLightAmbient[0] << ", " << createActorLightAmbient[1] << ", " << createActorLightAmbient[2] << "],\n";
+						actorJson << "        \"diffuse\": [" << createActorLightDiffuse[0] << ", " << createActorLightDiffuse[1] << ", " << createActorLightDiffuse[2] << "],\n";
+						actorJson << "        \"specular\": [" << createActorLightSpecular[0] << ", " << createActorLightSpecular[1] << ", " << createActorLightSpecular[2] << "],\n";
+						actorJson << "        \"constant\": " << createActorLightConstant << ",\n";
+						actorJson << "        \"linear\": " << createActorLightLinear << ",\n";
+						actorJson << "        \"quadratic\": " << createActorLightQuadratic << "\n";
+						actorJson << "      }\n";
+					}
+					else if (componentType == "camera")
+					{
+						actorJson << ",\n      \"transform\": {\n";
+						actorJson << "        \"location\": [" << createActorCameraRelativeLocation[0] << ", " << createActorCameraRelativeLocation[1] << ", " << createActorCameraRelativeLocation[2] << "],\n";
+						actorJson << "        \"rotationAxis\": [" << createActorCameraRelativeRotationAxis[0] << ", " << createActorCameraRelativeRotationAxis[1] << ", " << createActorCameraRelativeRotationAxis[2] << "],\n";
+						actorJson << "        \"rotationAngle\": " << createActorCameraRelativeRotationAngle << "\n";
+						actorJson << "      },\n";
+						actorJson << "      \"camera\": {\n";
+						actorJson << "        \"fov\": " << createActorCameraFov << ",\n";
+						actorJson << "        \"nearClip\": " << createActorCameraNearClip << ",\n";
+						actorJson << "        \"farClip\": " << createActorCameraFarClip << "\n";
+						actorJson << "      }\n";
+					}
+					else
+					{
+						actorJson << "\n";
+					}
+
+					actorJson << "    }";
+					if (i + 1 < selectedComponentTypes.size())
+					{
+						actorJson << ",";
+					}
+					actorJson << "\n";
+				}
+
+				actorJson << "  ]\n";
+				actorJson << "}\n";
+
+				std::string writeError;
+				if (WriteTextFileAtomically(outPath, actorJson.str(), writeError))
+				{
+					createActorStatus = "Actor template created";
+					selectedComponentTypes.clear();
+					ImGui::CloseCurrentPopup();
+				}
+				else
+				{
+					createActorStatus = Achengine::format("Create failed: %s", writeError.c_str());
+				}
+			}
+		}
+
+		if (!createActorStatus.empty())
+		{
+			ImGui::TextWrapped("%s", createActorStatus.c_str());
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+		{
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
 	}
 	ImGui::EndChild();
 	ImGui::End();
@@ -2117,15 +3377,15 @@ void Sandbox3D::OnImGuiRender()
 	const glm::vec3 activeCameraPosition = GetActiveSceneCameraPosition(activeCamera);
 
 	auto ComputeDropWorldLocation = [&](const ImVec2& mousePos) {
-		const float width = renderMax.x - renderMin.x;
-		const float height = renderMax.y - renderMin.y;
+		const float width = sceneMax.x - sceneMin.x;
+		const float height = sceneMax.y - sceneMin.y;
 		if (width <= 1.0f || height <= 1.0f)
 		{
 			return glm::vec3(0.0f, 0.0f, 0.0f);
 		}
 
-		const float x = ((mousePos.x - renderMin.x) / width) * 2.0f - 1.0f;
-		const float y = 1.0f - ((mousePos.y - renderMin.y) / height) * 2.0f;
+		const float x = ((mousePos.x - sceneMin.x) / width) * 2.0f - 1.0f;
+		const float y = 1.0f - ((mousePos.y - sceneMin.y) / height) * 2.0f;
 		const glm::mat4 viewProjection = activeCamera->GetViewProjection() * activeCamera->GetViewMatrix();
 		const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
 
@@ -2193,9 +3453,16 @@ void Sandbox3D::OnImGuiRender()
 							const glm::vec3 dropLocation = ComputeDropWorldLocation(ImGui::GetIO().MousePos);
 							std::string templateSpawnStatus;
 							const std::string templateType = NormalizeActorTemplatePathForMap(m_MapPathBuffer, dropped);
-							const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(dropped, dropLocation, templateSpawnStatus, nullptr, templateType);
+							Achengine::AActor* droppedTemplateActor = nullptr;
+							const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(dropped, dropLocation, templateSpawnStatus, &droppedTemplateActor, templateType);
 							if (templateResult == EActorTemplateLoadResult::Spawned)
 							{
+								if (droppedTemplateActor)
+								{
+									m_SelectedActors.clear();
+									m_SelectedActors.insert(droppedTemplateActor);
+									m_ActiveActor = droppedTemplateActor;
+								}
 								modelStatus = templateSpawnStatus;
 							}
 							else if (templateResult == EActorTemplateLoadResult::NotTemplate)
@@ -2269,10 +3536,10 @@ void Sandbox3D::OnImGuiRender()
 		}
 
 		glm::vec3 ndc = glm::vec3(clip) / clip.w;
-		const float width = renderMax.x - renderMin.x;
-		const float height = renderMax.y - renderMin.y;
-		out.x = renderMin.x + (ndc.x * 0.5f + 0.5f) * width;
-		out.y = renderMin.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
+		const float width = sceneMax.x - sceneMin.x;
+		const float height = sceneMax.y - sceneMin.y;
+		out.x = sceneMin.x + (ndc.x * 0.5f + 0.5f) * width;
+		out.y = sceneMin.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * height;
 		return true;
 	};
 
@@ -2421,15 +3688,15 @@ void Sandbox3D::OnImGuiRender()
 	const bool mouseInScene = IsPointInRect(mousePos, sceneMin, sceneMax);
 
 	auto PickActorAtMouse = [&](const ImVec2& mouse) -> Achengine::AActor* {
-		const float width = renderMax.x - renderMin.x;
-		const float height = renderMax.y - renderMin.y;
+		const float width = sceneMax.x - sceneMin.x;
+		const float height = sceneMax.y - sceneMin.y;
 		if (width <= 1.0f || height <= 1.0f)
 		{
 			return nullptr;
 		}
 
-		const float x = ((mouse.x - renderMin.x) / width) * 2.0f - 1.0f;
-		const float y = 1.0f - ((mouse.y - renderMin.y) / height) * 2.0f;
+		const float x = ((mouse.x - sceneMin.x) / width) * 2.0f - 1.0f;
+		const float y = 1.0f - ((mouse.y - sceneMin.y) / height) * 2.0f;
 
 		glm::vec4 nearClip = glm::vec4(x, y, -1.0f, 1.0f);
 		glm::vec4 farClip = glm::vec4(x, y, 1.0f, 1.0f);
@@ -2678,6 +3945,70 @@ void Sandbox3D::OnEvent(Achengine::Event& event)
 	}
 	else if (!event.IsHandled())
 	{
+		Achengine::EventDispatcher dispatcher(event);
+		dispatcher.Dispatch<Achengine::KeyPressedEvent>([this](Achengine::KeyPressedEvent& keyEvent)
+		{
+			if (keyEvent.GetKeyCode() == ACHENGINE_KEY_ESCAPE)
+			{
+				ImGuiIO& io = ImGui::GetIO();
+				if (io.WantCaptureKeyboard || m_SelectedActors.empty())
+				{
+					return false;
+				}
+
+				m_SelectedActors.clear();
+				m_ActiveActor = nullptr;
+				m_MapStatus = "Selection cleared";
+				return true;
+			}
+
+			if (keyEvent.GetKeyCode() != ACHENGINE_KEY_DELETE)
+			{
+				return false;
+			}
+
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureKeyboard || !m_ActiveActor || m_SelectedActors.empty())
+			{
+				return false;
+			}
+
+			std::vector<Achengine::AActor*> actorsToDelete;
+			actorsToDelete.reserve(m_SelectedActors.size());
+			for (Achengine::AActor* actor : m_SelectedActors)
+			{
+				if (actor)
+				{
+					actorsToDelete.push_back(actor);
+				}
+			}
+
+			for (Achengine::AActor* actor : actorsToDelete)
+			{
+				if (actor == m_ModelActor)
+				{
+					m_ModelActor = nullptr;
+					m_ModelMesh = nullptr;
+				}
+				if (actor == m_PlayerActor)
+				{
+					m_PlayerActor = nullptr;
+				}
+
+				Achengine::WorldActorCache::DestroyActor(actor);
+			}
+
+			m_SelectedActors.clear();
+			m_ActiveActor = nullptr;
+			m_MapStatus = Achengine::format("Deleted %d actor(s)", (int)actorsToDelete.size());
+			return !actorsToDelete.empty();
+		});
+
+		if (event.IsHandled())
+		{
+			return;
+		}
+
 		m_CameraController->OnEvent(event);
 	}
 }

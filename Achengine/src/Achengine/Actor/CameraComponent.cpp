@@ -33,6 +33,13 @@ namespace Achengine
         m_FarClip = NewFarClip;
     }
 
+    void UCameraComponent::SetViewportSize(float width, float height)
+    {
+        m_ViewportWidth = width > 1.0f ? width : 1.0f;
+        m_ViewportHeight = height > 1.0f ? height : 1.0f;
+        UpdateProjection();
+    }
+
     glm::vec3 UCameraComponent::GetWorldLocation() const
     {
         if (GetOwner())

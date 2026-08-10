@@ -361,11 +361,6 @@ namespace Achengine
                     std::string normalPath = path.C_Str();
                     subMesh.NormalTexture = TryLoadTexturePath(normalPath, subMesh.OwnsNormalTexture);
                 }
-
-                if (!subMesh.DiffuseTexture)
-                {
-                    ACHENGINE_CORE_WARN("Diffuse texture not found for material {0} in model {1}", mesh->mMaterialIndex, modelPath);
-                }
             }
 
             if (!subMesh.Vertices.empty() && !subMesh.Indices.empty())
@@ -388,7 +383,6 @@ namespace Achengine
             m_Bounds.IsValid = true;
         }
 
-        ACHENGINE_CORE_INFO("Loaded model {0}: {1} submeshes", modelPath, m_SubMeshes.size());
         m_ModelPath = modelPath;
         return true;
 #else
