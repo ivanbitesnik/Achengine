@@ -45,7 +45,7 @@ namespace Achengine
     class UMesh : public UActorComponent
     {
         public:
-            UMesh() {}
+            UMesh();
             UMesh(const std::string& modelPath, const std::string& shaderPath = "");
             virtual ~UMesh();
 

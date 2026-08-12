@@ -6,6 +6,11 @@
 
 namespace Achengine
 {
+	namespace
+	{
+		const bool s_RegisteredLightClass = UActorComponent::RegisterComponentClass<ULightComponent>("ULightComponent", "light");
+	}
+
 	ULightComponent::ULightComponent()
 	{
 		m_LightSource = new FLightSource();

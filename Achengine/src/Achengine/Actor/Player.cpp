@@ -2,12 +2,16 @@
 #include "Player.h"
 
 #include "Achengine/Actor/CameraComponent.h"
+#include "Achengine/Actor/MovementComponent.h"
 
 namespace Achengine
 {
     APlayer::APlayer()
     {
         SetActorName("Player");
+
+		m_MovementComponent = new UMovementComponent();
+		AddActorComponent(m_MovementComponent);
 
         m_CameraComponent = new UCameraComponent();
         m_CameraComponent->SetRelativeLocation(glm::vec3(-15.0f, 0.0f, 0.0f));

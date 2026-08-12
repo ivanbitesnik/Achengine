@@ -1,6 +1,8 @@
 #include "Sandbox3D.h"
 // ----------------------------------------
 
+#include "Achengine/Actor/MovementComponent.h"
+
 #include "imgui/imgui.h"
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -165,6 +167,15 @@ static std::string GetDefaultCubeModelPath()
 #endif
 }
 
+static std::string GetDefaultPlayerTemplatePath()
+{
+#ifdef ACHENGINE_PLATFORM_LINUX
+	return "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/actors/PlayerTemplate.json";
+#else
+	return "assets/actors/PlayerTemplate.json";
+#endif
+}
+
 static bool DirectoryHasGameAssets(const std::string& directory, int depth = 0, int maxDepth = 8)
 {
 	if (depth > maxDepth)
@@ -285,7 +296,7 @@ static std::vector<FBrowserEntry> ReadDirectoryEntries(const std::string& direct
 	return entries;
 }
 
-static void CollectModelFilesRecursive(const std::string& directory, std::vector<std::string>& outFiles, int depth = 0, int maxDepth = 4)
+static void CollectModelFilesRecursive(const std::string& directory, std::vector<std::string>& outFiles, int depth = 0, int maxDepth = 8)
 {
 	if (depth > maxDepth)
 	{
@@ -771,6 +782,100 @@ namespace
 		return true;
 	}
 
+	struct FGameGlobalsFloatPropertyDescriptor
+	{
+		const char* JsonKey = "";
+		std::function<float(const Achengine::GameGlobals&)> Getter;
+		std::function<void(Achengine::GameGlobals&, float)> Setter;
+	};
+
+	static const std::vector<FGameGlobalsFloatPropertyDescriptor>& GetGameGlobalsFloatDescriptors()
+	{
+		static const std::vector<FGameGlobalsFloatPropertyDescriptor> descriptors = {
+			{
+				"gravity",
+				[](const Achengine::GameGlobals& globals) { return globals.Gravity; },
+				[](Achengine::GameGlobals& globals, float value) { globals.Gravity = value; }
+			}
+		};
+
+		return descriptors;
+	}
+
+	static void WriteGameGlobalsJson(std::ostream& out, const Achengine::GameGlobals* gameGlobals)
+	{
+		out << "  \"gameGlobals\": {\n";
+
+		const std::vector<FGameGlobalsFloatPropertyDescriptor>& descriptors = GetGameGlobalsFloatDescriptors();
+		for (size_t i = 0; i < descriptors.size(); ++i)
+		{
+			const FGameGlobalsFloatPropertyDescriptor& descriptor = descriptors[i];
+			const float value = (gameGlobals && descriptor.Getter)
+				? descriptor.Getter(*gameGlobals)
+				: 0.0f;
+
+			out << "    \"" << descriptor.JsonKey << "\": " << value;
+			if (i + 1 < descriptors.size())
+			{
+				out << ",";
+			}
+			out << "\n";
+		}
+
+		out << "  },\n";
+	}
+
+	static void ApplyGameGlobalsFromJson(const FJsonValue& root, Achengine::GameGlobals* gameGlobals)
+	{
+		if (!gameGlobals)
+		{
+			return;
+		}
+
+		FJsonValue gameGlobalsValue;
+		if (!JsonReadObjectField(root, "gameGlobals", gameGlobalsValue) || gameGlobalsValue.Type != FJsonValue::EType::Object)
+		{
+			return;
+		}
+
+		for (const FGameGlobalsFloatPropertyDescriptor& descriptor : GetGameGlobalsFloatDescriptors())
+		{
+			if (!descriptor.Getter || !descriptor.Setter)
+			{
+				continue;
+			}
+
+			float value = descriptor.Getter(*gameGlobals);
+			if (JsonReadNumberField(gameGlobalsValue, descriptor.JsonKey, value))
+			{
+				descriptor.Setter(*gameGlobals, value);
+			}
+		}
+	}
+
+	static void DrawGameGlobalsInspector(Achengine::GameGlobals* gameGlobals)
+	{
+		if (!gameGlobals)
+		{
+			ImGui::TextUnformatted("Game globals unavailable");
+			return;
+		}
+
+		for (const FGameGlobalsFloatPropertyDescriptor& descriptor : GetGameGlobalsFloatDescriptors())
+		{
+			if (!descriptor.Getter || !descriptor.Setter)
+			{
+				continue;
+			}
+
+			float value = descriptor.Getter(*gameGlobals);
+			if (ImGui::DragFloat(descriptor.JsonKey, &value, 0.01f))
+			{
+				descriptor.Setter(*gameGlobals, value);
+			}
+		}
+	}
+
 	static std::string GetComponentTypeTag(const Achengine::UActorComponent* component)
 	{
 		if (!component)
@@ -778,21 +883,9 @@ namespace
 			return "component";
 		}
 
-		if (dynamic_cast<const Achengine::UWaterMesh*>(component))
+		if (const Achengine::UActorComponent::FRegisteredComponentClass* descriptor = Achengine::UActorComponent::FindRegisteredComponentClassByInstance(component))
 		{
-			return "water";
-		}
-		if (dynamic_cast<const Achengine::UMesh*>(component))
-		{
-			return "mesh";
-		}
-		if (dynamic_cast<const Achengine::ULightComponent*>(component))
-		{
-			return "light";
-		}
-		if (dynamic_cast<const Achengine::UCameraComponent*>(component))
-		{
-			return "camera";
+			return descriptor->TypeTag ? descriptor->TypeTag : "component";
 		}
 
 		return "component";
@@ -810,21 +903,12 @@ namespace
 
 	static Achengine::UActorComponent* CreateComponentFromTypeTag(const std::string& typeTag)
 	{
-		if (typeTag == "mesh")
+		if (const Achengine::UActorComponent::FRegisteredComponentClass* descriptor = Achengine::UActorComponent::FindRegisteredComponentClassByTypeTag(typeTag))
 		{
-			return new Achengine::UMesh();
-		}
-		if (typeTag == "water")
-		{
-			return new Achengine::UWaterMesh();
-		}
-		if (typeTag == "light")
-		{
-			return new Achengine::ULightComponent();
-		}
-		if (typeTag == "camera")
-		{
-			return new Achengine::UCameraComponent();
+			if (descriptor->Factory)
+			{
+				return descriptor->Factory();
+			}
 		}
 
 		return nullptr;
@@ -1008,6 +1092,12 @@ namespace
 		float CameraFov = 90.0f;
 		float CameraNearClip = 0.1f;
 		float CameraFarClip = 1000.0f;
+
+		bool HasMovement = false;
+		float MovementAcceleration = 5.0f;
+		float MovementMaxSpeed = 10.0f;
+		float MovementJumpImpulse = 12.0f;
+		float MovementGroundTraceDistance = 2.5f;
 	};
 
 	struct FActorTemplateEditorState
@@ -1020,11 +1110,24 @@ namespace
 		std::string Status;
 	};
 
+	struct FMapJsonEditorState
+	{
+		bool IsActive = false;
+		std::string FilePath;
+		std::string Status;
+	};
+
 	static FActorTemplateEditorState g_ActorTemplateEditor;
+	static FMapJsonEditorState g_MapJsonEditor;
 
 	static void ResetActorTemplateEditor()
 	{
 		g_ActorTemplateEditor = FActorTemplateEditorState();
+	}
+
+	static void ResetMapJsonEditor()
+	{
+		g_MapJsonEditor = FMapJsonEditorState();
 	}
 
 	static bool LoadActorTemplateEditorFromFile(const std::string& filePath, std::string& outError)
@@ -1046,6 +1149,7 @@ namespace
 		}
 
 		ResetActorTemplateEditor();
+		ResetMapJsonEditor();
 		g_ActorTemplateEditor.IsActive = true;
 		g_ActorTemplateEditor.FilePath = filePath;
 		std::strncpy(g_ActorTemplateEditor.TemplateName, templateName.c_str(), sizeof(g_ActorTemplateEditor.TemplateName) - 1);
@@ -1079,6 +1183,11 @@ namespace
 				JsonReadVec3Field(componentValue, "scale", component.TransformScale);
 			}
 
+			if (component.Type == "movement")
+			{
+				component.HasMovement = true;
+			}
+
 			FJsonValue transformValue;
 			if (JsonReadObjectField(componentValue, "transform", transformValue) && transformValue.Type == FJsonValue::EType::Object)
 			{
@@ -1109,6 +1218,16 @@ namespace
 				JsonReadNumberField(cameraValue, "fov", component.CameraFov);
 				JsonReadNumberField(cameraValue, "nearClip", component.CameraNearClip);
 				JsonReadNumberField(cameraValue, "farClip", component.CameraFarClip);
+			}
+
+			FJsonValue movementValue;
+			if (JsonReadObjectField(componentValue, "movement", movementValue) && movementValue.Type == FJsonValue::EType::Object)
+			{
+				component.HasMovement = true;
+				JsonReadNumberField(movementValue, "acceleration", component.MovementAcceleration);
+				JsonReadNumberField(movementValue, "maxSpeed", component.MovementMaxSpeed);
+				JsonReadNumberField(movementValue, "jumpImpulse", component.MovementJumpImpulse);
+				JsonReadNumberField(movementValue, "groundTraceDistance", component.MovementGroundTraceDistance);
 			}
 
 			if (glm::length(component.TransformRotationAxis) < 0.0001f)
@@ -1197,6 +1316,16 @@ namespace
 				out << "      }";
 			}
 
+			if (component.HasMovement)
+			{
+				out << ",\n      \"movement\": {\n";
+				out << "        \"acceleration\": " << component.MovementAcceleration << ",\n";
+				out << "        \"maxSpeed\": " << component.MovementMaxSpeed << ",\n";
+				out << "        \"jumpImpulse\": " << component.MovementJumpImpulse << ",\n";
+				out << "        \"groundTraceDistance\": " << component.MovementGroundTraceDistance << "\n";
+				out << "      }";
+			}
+
 			out << "\n    }";
 			if (i + 1 < g_ActorTemplateEditor.Components.size())
 			{
@@ -1236,6 +1365,19 @@ namespace
 		}
 
 		bool spawnAsPlayerStart = false;
+		bool spawnAsPlayer = false;
+		if (templateName == "PlayerTemplate")
+		{
+			spawnAsPlayer = true;
+		}
+
+		const std::string playerTemplateMarker = "PlayerTemplate.json";
+		if (filePath.find(playerTemplateMarker) != std::string::npos ||
+			templateType.find(playerTemplateMarker) != std::string::npos)
+		{
+			spawnAsPlayer = true;
+		}
+
 		for (const FJsonValue& componentValue : componentsValue.ArrayValue)
 		{
 			if (componentValue.Type != FJsonValue::EType::Object)
@@ -1251,9 +1393,25 @@ namespace
 			}
 		}
 
-		Achengine::AActor* actor = spawnAsPlayerStart
-			? static_cast<Achengine::AActor*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayerStart>())
-			: Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
+		Achengine::AActor* actor = nullptr;
+		if (spawnAsPlayerStart)
+		{
+			actor = static_cast<Achengine::AActor*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayerStart>());
+		}
+		else if (spawnAsPlayer)
+		{
+			actor = static_cast<Achengine::AActor*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayer>());
+		}
+		else
+		{
+			actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
+		}
+
+		if (!actor)
+		{
+			outStatus = "Failed to spawn actor instance";
+			return EActorTemplateLoadResult::Failed;
+		}
 
 		if (!templateName.empty())
 		{
@@ -1265,6 +1423,13 @@ namespace
 		glm::vec3 rotationAxis(1.0f, 0.0f, 0.0f);
 		float rotationAngle = 0.0f;
 		glm::vec3 scale(1.0f);
+
+		std::vector<Achengine::UActorComponent*> availableComponents;
+		for (Achengine::UActorComponent* component : actor->GetActorComponents())
+		{
+			availableComponents.push_back(component);
+		}
+		std::vector<bool> consumedComponents(availableComponents.size(), false);
 
 		for (const FJsonValue& componentValue : componentsValue.ArrayValue)
 		{
@@ -1285,101 +1450,137 @@ namespace
 				JsonReadVec3Field(componentValue, "rotationAxis", rotationAxis);
 				JsonReadNumberField(componentValue, "rotationAngle", rotationAngle);
 				JsonReadVec3Field(componentValue, "scale", scale);
+				continue;
 			}
-			else if (componentType == "mesh")
+
+			if (componentType == "playerStart")
+			{
+				continue;
+			}
+
+			Achengine::UActorComponent* targetComponent = nullptr;
+			for (size_t i = 0; i < availableComponents.size(); ++i)
+			{
+				if (consumedComponents[i])
+				{
+					continue;
+				}
+
+				if (ComponentMatchesTypeTag(availableComponents[i], componentType))
+				{
+					targetComponent = availableComponents[i];
+					consumedComponents[i] = true;
+					break;
+				}
+			}
+
+			if (!targetComponent)
+			{
+				targetComponent = CreateComponentFromTypeTag(componentType);
+				if (!targetComponent)
+				{
+					continue;
+				}
+
+				actor->AddActorComponent(targetComponent);
+				availableComponents.push_back(targetComponent);
+				consumedComponents.push_back(true);
+			}
+
+			FJsonValue normalizedComponentValue = componentValue;
+			FJsonValue nestedTransformValue;
+			if (JsonReadObjectField(componentValue, "transform", nestedTransformValue) && nestedTransformValue.Type == FJsonValue::EType::Object)
+			{
+				FJsonValue existingField;
+				if (!JsonReadObjectField(normalizedComponentValue, "location", existingField))
+				{
+					glm::vec3 locationValue;
+					if (JsonReadVec3Field(nestedTransformValue, "location", locationValue))
+					{
+						FJsonValue locationField;
+						locationField.Type = FJsonValue::EType::Array;
+						locationField.ArrayValue.resize(3);
+						locationField.ArrayValue[0].Type = FJsonValue::EType::Number;
+						locationField.ArrayValue[0].NumberValue = locationValue.x;
+						locationField.ArrayValue[1].Type = FJsonValue::EType::Number;
+						locationField.ArrayValue[1].NumberValue = locationValue.y;
+						locationField.ArrayValue[2].Type = FJsonValue::EType::Number;
+						locationField.ArrayValue[2].NumberValue = locationValue.z;
+						normalizedComponentValue.ObjectValue["location"] = locationField;
+					}
+				}
+
+				if (!JsonReadObjectField(normalizedComponentValue, "rotationAxis", existingField))
+				{
+					glm::vec3 axisValue;
+					if (JsonReadVec3Field(nestedTransformValue, "rotationAxis", axisValue))
+					{
+						FJsonValue axisField;
+						axisField.Type = FJsonValue::EType::Array;
+						axisField.ArrayValue.resize(3);
+						axisField.ArrayValue[0].Type = FJsonValue::EType::Number;
+						axisField.ArrayValue[0].NumberValue = axisValue.x;
+						axisField.ArrayValue[1].Type = FJsonValue::EType::Number;
+						axisField.ArrayValue[1].NumberValue = axisValue.y;
+						axisField.ArrayValue[2].Type = FJsonValue::EType::Number;
+						axisField.ArrayValue[2].NumberValue = axisValue.z;
+						normalizedComponentValue.ObjectValue["rotationAxis"] = axisField;
+					}
+				}
+
+				if (!JsonReadObjectField(normalizedComponentValue, "rotationAngle", existingField))
+				{
+					float angleValue = 0.0f;
+					if (JsonReadNumberField(nestedTransformValue, "rotationAngle", angleValue))
+					{
+						FJsonValue angleField;
+						angleField.Type = FJsonValue::EType::Number;
+						angleField.NumberValue = angleValue;
+						normalizedComponentValue.ObjectValue["rotationAngle"] = angleField;
+					}
+				}
+
+				if (!JsonReadObjectField(normalizedComponentValue, "scale", existingField))
+				{
+					glm::vec3 scaleValue(1.0f);
+					if (JsonReadVec3Field(nestedTransformValue, "scale", scaleValue))
+					{
+						FJsonValue scaleField;
+						scaleField.Type = FJsonValue::EType::Array;
+						scaleField.ArrayValue.resize(3);
+						scaleField.ArrayValue[0].Type = FJsonValue::EType::Number;
+						scaleField.ArrayValue[0].NumberValue = scaleValue.x;
+						scaleField.ArrayValue[1].Type = FJsonValue::EType::Number;
+						scaleField.ArrayValue[1].NumberValue = scaleValue.y;
+						scaleField.ArrayValue[2].Type = FJsonValue::EType::Number;
+						scaleField.ArrayValue[2].NumberValue = scaleValue.z;
+						normalizedComponentValue.ObjectValue["scale"] = scaleField;
+					}
+				}
+			}
+
+			if (Achengine::UMesh* mesh = dynamic_cast<Achengine::UMesh*>(targetComponent))
 			{
 				std::string modelPath;
-				JsonReadStringField(componentValue, "modelPath", modelPath);
-				if (!modelPath.empty())
+				if (JsonReadStringField(normalizedComponentValue, "modelPath", modelPath) && !modelPath.empty())
 				{
-					modelPath = ResolvePathRelativeToFile(filePath, modelPath);
-				}
-
-				if (modelPath.empty() || !FileExists(modelPath))
-				{
-					modelPath = GetDefaultCubeModelPath();
-				}
-
-				if (FileExists(modelPath))
-				{
-					actor->AddActorComponent(new Achengine::UMesh(modelPath));
-				}
-			}
-			else if (componentType == "water")
-			{
-				actor->AddActorComponent(new Achengine::UWaterMesh());
-			}
-			else if (componentType == "camera")
-			{
-				Achengine::UCameraComponent* cameraComponent = new Achengine::UCameraComponent();
-
-				FJsonValue componentTransformValue;
-				if (JsonReadObjectField(componentValue, "transform", componentTransformValue) && componentTransformValue.Type == FJsonValue::EType::Object)
-				{
-					glm::vec3 cameraRelativeLocation(0.0f);
-					glm::vec3 cameraRelativeRotationAxis(1.0f, 0.0f, 0.0f);
-					float cameraRelativeRotationAngle = 0.0f;
-
-					JsonReadVec3Field(componentTransformValue, "location", cameraRelativeLocation);
-					JsonReadVec3Field(componentTransformValue, "rotationAxis", cameraRelativeRotationAxis);
-					JsonReadNumberField(componentTransformValue, "rotationAngle", cameraRelativeRotationAngle);
-
-					if (glm::length(cameraRelativeRotationAxis) < 0.0001f)
+					const std::string resolvedModelPath = ResolvePathRelativeToFile(filePath, modelPath);
+					if (FileExists(resolvedModelPath))
 					{
-						cameraRelativeRotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
-					}
-
-					cameraComponent->SetRelativeLocation(cameraRelativeLocation);
-					cameraComponent->SetRelativeRotation(glm::normalize(cameraRelativeRotationAxis), cameraRelativeRotationAngle);
-				}
-
-				FJsonValue cameraValue;
-				if (JsonReadObjectField(componentValue, "camera", cameraValue) && cameraValue.Type == FJsonValue::EType::Object)
-				{
-					float fov = cameraComponent->GetFieldOfView();
-					float nearClip = 0.1f;
-					float farClip = 1000.0f;
-
-					JsonReadNumberField(cameraValue, "fov", fov);
-					JsonReadNumberField(cameraValue, "nearClip", nearClip);
-					JsonReadNumberField(cameraValue, "farClip", farClip);
-
-					if (nearClip < 0.001f)
-					{
-						nearClip = 0.001f;
-					}
-					if (farClip <= nearClip)
-					{
-						farClip = nearClip + 1.0f;
-					}
-
-					cameraComponent->SetFieldOfView(fov);
-					cameraComponent->SetClipPlanes(nearClip, farClip);
-					cameraComponent->UpdateProjection();
-				}
-
-				actor->AddActorComponent(cameraComponent);
-			}
-			else if (componentType == "light")
-			{
-				Achengine::ULightComponent* lightComponent = new Achengine::ULightComponent();
-				FJsonValue lightValue;
-				if (JsonReadObjectField(componentValue, "light", lightValue) && lightValue.Type == FJsonValue::EType::Object)
-				{
-					if (Achengine::FLightSource* ls = lightComponent->GetLightSource())
-					{
-						JsonReadVec3Field(lightValue, "color", ls->color);
-						JsonReadVec3Field(lightValue, "ambient", ls->ambient);
-						JsonReadVec3Field(lightValue, "diffuse", ls->diffuse);
-						JsonReadVec3Field(lightValue, "specular", ls->specular);
-						JsonReadNumberField(lightValue, "constant", ls->constant);
-						JsonReadNumberField(lightValue, "linear", ls->linear);
-						JsonReadNumberField(lightValue, "quadratic", ls->quadratic);
+						normalizedComponentValue.ObjectValue["modelPath"].StringValue = resolvedModelPath;
 					}
 				}
-
-				actor->AddActorComponent(lightComponent);
+				else
+				{
+					const std::string defaultModelPath = GetDefaultCubeModelPath();
+					if (FileExists(defaultModelPath))
+					{
+						mesh->ReloadModel(defaultModelPath);
+					}
+				}
 			}
+
+			ApplyComponentOverrideFromJson(targetComponent, normalizedComponentValue, filePath);
 		}
 
 		if (glm::length(rotationAxis) < 0.0001f)
@@ -1405,12 +1606,20 @@ Sandbox3D::Sandbox3D()
 	: Layer("Sandbox3D")
 {
 	m_CameraController = new Achengine::EditorCameraController(1280.0f / 720.0f);
+	ReinitializeGameGlobals();
 }
 
 Sandbox3D::~Sandbox3D()
 {
 	delete m_PlayerController;
 	delete m_CameraController;
+	delete m_GameGlobals;
+}
+
+void Sandbox3D::ReinitializeGameGlobals()
+{
+	delete m_GameGlobals;
+	m_GameGlobals = new Achengine::GameGlobals();
 }
 
 void Sandbox3D::OnAttach()
@@ -1473,7 +1682,40 @@ void Sandbox3D::EnsurePlaySessionActorPossession()
 
 	if (!m_PlayerActor)
 	{
-		m_PlayerActor = static_cast<Achengine::APlayer*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayer>());
+		std::string templateSpawnStatus;
+		Achengine::AActor* templateActor = nullptr;
+		const std::string playerTemplatePath = GetDefaultPlayerTemplatePath();
+		const EActorTemplateLoadResult templateResult = SpawnActorTemplateFromJson(playerTemplatePath, glm::vec3(0.0f), templateSpawnStatus, &templateActor, "../actors/PlayerTemplate.json");
+		m_PlayerActor = dynamic_cast<Achengine::APlayer*>(templateActor);
+		if (!m_PlayerActor)
+		{
+			if (templateActor)
+			{
+				Achengine::WorldActorCache::DestroyActor(templateActor);
+			}
+
+			if (templateResult != EActorTemplateLoadResult::Spawned)
+			{
+				ACHENGINE_CORE_WARN("Failed to spawn player template: %s", templateSpawnStatus.c_str());
+			}
+			else
+			{
+				ACHENGINE_CORE_WARN("Player template did not produce APlayer, spawning default APlayer");
+			}
+
+			m_PlayerActor = dynamic_cast<Achengine::APlayer*>(Achengine::WorldActorCache::SpawnActor<Achengine::APlayer>());
+			if (m_PlayerActor)
+			{
+				m_PlayerActor->SetTemplateType("../actors/PlayerTemplate.json");
+			}
+		}
+
+		if (!m_PlayerActor)
+		{
+			ACHENGINE_CORE_ERROR("Failed to create player actor for play session");
+			return;
+		}
+
 		glm::vec3 spawnLocation(0.0f, 0.0f, 0.0f);
 		Achengine::FRotation spawnRotation(glm::vec3(0.0f, 1.0f, 0.0f), 180.0f);
 		if (!playerStarts.empty())
@@ -1526,6 +1768,29 @@ void Sandbox3D::StopPlayMode()
 		return;
 	}
 
+	for (const auto& entry : m_ActiveCollisionComponents)
+	{
+		Achengine::UActorComponent* compA = entry.second.first;
+		Achengine::UActorComponent* compB = entry.second.second;
+		if (!Achengine::UActorComponent::IsPointerAlive(compA) || !Achengine::UActorComponent::IsPointerAlive(compB))
+		{
+			continue;
+		}
+
+		Achengine::AActor* ownerA = compA->GetOwner();
+		Achengine::AActor* ownerB = compB->GetOwner();
+		if (ownerA)
+		{
+			ownerA->HandleCollisionEnd(compB);
+		}
+		if (ownerB)
+		{
+			ownerB->HandleCollisionEnd(compA);
+		}
+	}
+	m_ActiveCollisionPairs.clear();
+	m_ActiveCollisionComponents.clear();
+
 	if (m_PlayerController)
 	{
 		m_PlayerController->UnPossess();
@@ -1546,11 +1811,15 @@ void Sandbox3D::StopPlayMode()
 
 	m_IsPlaying = false;
 	SetPlayCursorCaptured(false);
+	m_CollisionCandidateCount = 0;
+	m_ConfirmedCollisionCount = 0;
 	m_MapStatus = "Play mode stopped";
 }
 
 void Sandbox3D::SpawnDefaultScene()
 {
+	ReinitializeGameGlobals();
+
 	Achengine::AActor* actor = Achengine::WorldActorCache::SpawnActor<Achengine::AActor>();
 	actor->SetActorName(Achengine::format("Floor"));
 	actor->SetTemplateType("../actors/CrateTemplate.json");
@@ -1595,10 +1864,16 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 				actor->Tick(timestep.GetSeconds());
 			}
 		}
+
+		UpdateCollisionBroadPhase();
 	}
 	else if (m_CameraController)
 	{
 		m_CameraController->OnUpdate(timestep);
+		m_CollisionCandidateCount = 0;
+		m_ConfirmedCollisionCount = 0;
+		m_ActiveCollisionPairs.clear();
+		m_ActiveCollisionComponents.clear();
 	}
 
 	// Render
@@ -1653,6 +1928,114 @@ void Sandbox3D::OnUpdate(Achengine::Timestep timestep)
 	Achengine::RenderCommand::SetViewport(0, 0, (uint32_t)windowWidth, (uint32_t)windowHeight);
 }
 
+void Sandbox3D::UpdateCollisionBroadPhase()
+{
+	m_CollisionCandidateCount = 0;
+	m_ConfirmedCollisionCount = 0;
+
+	Achengine::WorldActorCache* cache = Achengine::WorldActorCache::Get();
+	if (!cache)
+	{
+		return;
+	}
+
+	if (m_GameGlobals)
+	{
+		m_CollisionOctree.Configure(*m_GameGlobals);
+	}
+
+	std::vector<Achengine::AActor*> collidableActors;
+	collidableActors.reserve(cache->GetActorCache().size());
+	for (Achengine::AActor* actor : cache->GetActorCache())
+	{
+		if (!actor)
+		{
+			continue;
+		}
+
+		const Achengine::FBounds bounds = actor->GetBounds();
+		if (!bounds.IsValid)
+		{
+			continue;
+		}
+
+		collidableActors.push_back(actor);
+	}
+
+	m_CollisionOctree.Build(collidableActors);
+	const std::vector<Achengine::CollisionOctree::FPair> candidates = m_CollisionOctree.CollectCandidatePairs(false);
+	m_CollisionCandidateCount = (uint32_t)candidates.size();
+
+	std::unordered_set<uint64_t> currentCollisionPairs;
+	std::unordered_map<uint64_t, std::pair<Achengine::UActorComponent*, Achengine::UActorComponent*>> currentCollisionComponents;
+
+	for (const Achengine::CollisionOctree::FPair& pair : candidates)
+	{
+		if (!pair.A || !pair.B)
+		{
+			continue;
+		}
+
+		Achengine::UActorComponent* componentA = const_cast<Achengine::UActorComponent*>(Achengine::GetPrimaryCollisionComponent(pair.A));
+		Achengine::UActorComponent* componentB = const_cast<Achengine::UActorComponent*>(Achengine::GetPrimaryCollisionComponent(pair.B));
+		if (!componentA || !componentB)
+		{
+			continue;
+		}
+
+		if (!Achengine::CollisionConfigurationAllowsPair(componentA, componentB))
+		{
+			continue;
+		}
+
+		const Achengine::FBounds boundsA = pair.A->GetBounds();
+		const Achengine::FBounds boundsB = pair.B->GetBounds();
+		if (Achengine::BoundsOverlapAabb(boundsA, boundsB))
+		{
+			++m_ConfirmedCollisionCount;
+
+			const uint64_t pairKey = Achengine::MakeActorPairKey(pair.A, pair.B);
+			currentCollisionPairs.insert(pairKey);
+			currentCollisionComponents[pairKey] = std::make_pair(componentA, componentB);
+
+			if (m_ActiveCollisionPairs.find(pairKey) == m_ActiveCollisionPairs.end())
+			{
+				pair.A->HandleCollisionBegin(componentB);
+				pair.B->HandleCollisionBegin(componentA);
+			}
+		}
+	}
+
+	for (const auto& existingPair : m_ActiveCollisionComponents)
+	{
+		if (currentCollisionPairs.find(existingPair.first) != currentCollisionPairs.end())
+		{
+			continue;
+		}
+
+		Achengine::UActorComponent* componentA = existingPair.second.first;
+		Achengine::UActorComponent* componentB = existingPair.second.second;
+		if (!Achengine::UActorComponent::IsPointerAlive(componentA) || !Achengine::UActorComponent::IsPointerAlive(componentB))
+		{
+			continue;
+		}
+
+		Achengine::AActor* actorA = componentA->GetOwner();
+		Achengine::AActor* actorB = componentB->GetOwner();
+		if (actorA)
+		{
+			actorA->HandleCollisionEnd(componentB);
+		}
+		if (actorB)
+		{
+			actorB->HandleCollisionEnd(componentA);
+		}
+	}
+
+	m_ActiveCollisionPairs = std::move(currentCollisionPairs);
+	m_ActiveCollisionComponents = std::move(currentCollisionComponents);
+}
+
 bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 {
 	if (filePath.empty())
@@ -1665,6 +2048,11 @@ bool Sandbox3D::SaveMapToFile(const std::string& filePath)
 
 	out << "{\n";
 	out << "  \"version\": 1,\n";
+	if (!m_GameGlobals)
+	{
+		ReinitializeGameGlobals();
+	}
+	WriteGameGlobalsJson(out, m_GameGlobals);
 	out << "  \"actors\": [\n";
 
 	std::vector<Achengine::AActor*> actors;
@@ -1827,6 +2215,9 @@ bool Sandbox3D::LoadMapFromFile(const std::string& filePath)
 		m_MapStatus = "Map JSON missing actors array";
 		return false;
 	}
+
+	ReinitializeGameGlobals();
+	ApplyGameGlobalsFromJson(root, m_GameGlobals);
 
 	Achengine::WorldActorCache* cache = Achengine::WorldActorCache::Get();
 	if (!cache)
@@ -2104,12 +2495,14 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 		m_ActiveActor = nullptr;
 		s_ActiveComponent = nullptr;
 		ResetActorTemplateEditor();
+		ResetMapJsonEditor();
 	}
 	if (!m_ActiveActor && !m_SelectedActors.empty())
 	{
 		m_ActiveActor = *m_SelectedActors.begin();
 		s_ActiveComponent = nullptr;
 		ResetActorTemplateEditor();
+		ResetMapJsonEditor();
 	}
 
 	if (s_ActiveComponent)
@@ -2156,6 +2549,7 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 						if (m_ActiveActor)
 						{
 							ResetActorTemplateEditor();
+							ResetMapJsonEditor();
 						}
 					}
 				}
@@ -2165,6 +2559,7 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 					m_ActiveActor = actor;
 					s_ActiveComponent = nullptr;
 					ResetActorTemplateEditor();
+					ResetMapJsonEditor();
 				}
 			}
 			else
@@ -2174,6 +2569,7 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				m_ActiveActor = actor;
 				s_ActiveComponent = nullptr;
 				ResetActorTemplateEditor();
+				ResetMapJsonEditor();
 			}
 		}
 		ImGui::PopID();
@@ -2195,7 +2591,18 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 	}
 
 	ImGui::Separator();
-	if (g_ActorTemplateEditor.IsActive)
+	if (g_MapJsonEditor.IsActive)
+	{
+		ImGui::TextUnformatted("Selected Map JSON");
+		ImGui::TextWrapped("File: %s", g_MapJsonEditor.FilePath.c_str());
+		ImGui::TextUnformatted("Game Globals");
+		DrawGameGlobalsInspector(m_GameGlobals);
+		if (!g_MapJsonEditor.Status.empty())
+		{
+			ImGui::TextWrapped("%s", g_MapJsonEditor.Status.c_str());
+		}
+	}
+	else if (g_ActorTemplateEditor.IsActive)
 	{
 		ImGui::TextUnformatted("Selected Actor Template");
 		ImGui::TextWrapped("File: %s", g_ActorTemplateEditor.FilePath.c_str());
@@ -2213,16 +2620,25 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				component.HasTransform = std::string(type) == "camera" || std::string(type) == "transform";
 				component.HasLight = std::string(type) == "light";
 				component.HasCamera = std::string(type) == "camera";
+				component.HasMovement = std::string(type) == "movement";
 				g_ActorTemplateEditor.Components.push_back(component);
 				g_ActorTemplateEditor.SelectedComponentIndex = (int)g_ActorTemplateEditor.Components.size() - 1;
 				g_ActorTemplateEditor.Status = Achengine::format("Added component: %s", type);
 				ImGui::CloseCurrentPopup();
 			};
 
-			if (ImGui::MenuItem("mesh")) { addTemplateComponent("mesh"); }
-			if (ImGui::MenuItem("water")) { addTemplateComponent("water"); }
-			if (ImGui::MenuItem("light")) { addTemplateComponent("light"); }
-			if (ImGui::MenuItem("camera")) { addTemplateComponent("camera"); }
+			for (const Achengine::UActorComponent::FRegisteredComponentClass& descriptor : Achengine::UActorComponent::GetRegisteredComponentClasses())
+			{
+				if (!descriptor.TypeTag || descriptor.TypeTag[0] == '\0')
+				{
+					continue;
+				}
+
+				if (ImGui::MenuItem(descriptor.TypeTag))
+				{
+					addTemplateComponent(descriptor.TypeTag);
+				}
+			}
 			if (ImGui::MenuItem("playerStart")) { addTemplateComponent("playerStart"); }
 			if (ImGui::MenuItem("transform")) { addTemplateComponent("transform"); }
 			ImGui::EndPopup();
@@ -2307,6 +2723,15 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 				{
 					component.CameraFarClip = component.CameraNearClip + 0.001f;
 				}
+			}
+
+			if (component.Type == "movement")
+			{
+				component.HasMovement = true;
+				ImGui::DragFloat("Acceleration", &component.MovementAcceleration, 0.1f, 0.0f, 200.0f);
+				ImGui::DragFloat("Max Speed", &component.MovementMaxSpeed, 0.1f, 0.0f, 200.0f);
+				ImGui::DragFloat("Jump Impulse", &component.MovementJumpImpulse, 0.1f, 0.0f, 200.0f);
+				ImGui::DragFloat("Ground Trace Distance", &component.MovementGroundTraceDistance, 0.05f, 0.01f, 50.0f);
 			}
 		}
 
@@ -2417,46 +2842,51 @@ void Sandbox3D::RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutl
 
 			if (ImGui::BeginPopup("OutlinerAddComponentPopup"))
 			{
-				if (ImGui::MenuItem("UMesh"))
+				for (const Achengine::UActorComponent::FRegisteredComponentClass& descriptor : Achengine::UActorComponent::GetRegisteredComponentClasses())
 				{
-					std::string defaultModelPath = GetDefaultCubeModelPath();
-					if (!FileExists(defaultModelPath))
+					if (!descriptor.ClassName || descriptor.ClassName[0] == '\0' || !descriptor.Factory)
 					{
-						defaultModelPath.clear();
+						continue;
 					}
 
-					Achengine::UMesh* meshComponent = defaultModelPath.empty()
-						? new Achengine::UMesh()
-						: new Achengine::UMesh(defaultModelPath);
-					m_ActiveActor->AddActorComponent(meshComponent);
-					s_ActiveComponent = meshComponent;
+					if (!ImGui::MenuItem(descriptor.ClassName))
+					{
+						continue;
+					}
+
+					Achengine::UActorComponent* newComponent = nullptr;
+					const std::string typeTag = descriptor.TypeTag ? descriptor.TypeTag : "";
+					if (typeTag == "mesh")
+					{
+						std::string defaultModelPath = GetDefaultCubeModelPath();
+						if (!FileExists(defaultModelPath))
+						{
+							defaultModelPath.clear();
+						}
+
+						Achengine::UMesh* meshComponent = defaultModelPath.empty()
+							? new Achengine::UMesh()
+							: new Achengine::UMesh(defaultModelPath);
+						newComponent = meshComponent;
+					}
+					else
+					{
+						newComponent = descriptor.Factory();
+					}
+
+					if (!newComponent)
+					{
+						s_ComponentStatus = Achengine::format("Failed to add %s", descriptor.ClassName);
+						ImGui::CloseCurrentPopup();
+						break;
+					}
+
+					m_ActiveActor->AddActorComponent(newComponent);
+					s_ActiveComponent = newComponent;
 					SyncModelPathBufferForComponent(s_ActiveComponent, s_ModelPathEditBuffers);
-					s_ComponentStatus = "Added UMesh";
+					s_ComponentStatus = Achengine::format("Added %s", descriptor.ClassName);
 					ImGui::CloseCurrentPopup();
-				}
-				if (ImGui::MenuItem("UWaterMesh"))
-				{
-					Achengine::UWaterMesh* waterMeshComponent = new Achengine::UWaterMesh();
-					m_ActiveActor->AddActorComponent(waterMeshComponent);
-					s_ActiveComponent = waterMeshComponent;
-					s_ComponentStatus = "Added UWaterMesh";
-					ImGui::CloseCurrentPopup();
-				}
-				if (ImGui::MenuItem("ULightComponent"))
-				{
-					Achengine::ULightComponent* lightComponent = new Achengine::ULightComponent();
-					m_ActiveActor->AddActorComponent(lightComponent);
-					s_ActiveComponent = lightComponent;
-					s_ComponentStatus = "Added ULightComponent";
-					ImGui::CloseCurrentPopup();
-				}
-				if (ImGui::MenuItem("UCameraComponent"))
-				{
-					Achengine::UCameraComponent* cameraComponent = new Achengine::UCameraComponent();
-					m_ActiveActor->AddActorComponent(cameraComponent);
-					s_ActiveComponent = cameraComponent;
-					s_ComponentStatus = "Added UCameraComponent";
-					ImGui::CloseCurrentPopup();
+					break;
 				}
 
 				ImGui::EndPopup();
@@ -2585,6 +3015,7 @@ void Sandbox3D::RenderMapPanel(const ImGuiViewport* viewport, float topPanelWidt
 			m_SelectedActors.clear();
 			m_ActiveActor = nullptr;
 			ResetActorTemplateEditor();
+			ResetMapJsonEditor();
 			m_ModelActor = nullptr;
 			m_ModelMesh = nullptr;
 			m_PlayerActor = nullptr;
@@ -2607,6 +3038,10 @@ void Sandbox3D::RenderMapPanel(const ImGuiViewport* viewport, float topPanelWidt
 	ImGui::Text("Draw Calls: %u", rendererStats.DrawCalls);
 	ImGui::Text("Meshes Queued: %u", rendererStats.MeshesQueued);
 	ImGui::Text("Mesh Batches: %u", rendererStats.MeshBatches);
+	ImGui::Separator();
+	ImGui::TextUnformatted("Collision Stats");
+	ImGui::Text("Candidate Pairs: %u", m_CollisionCandidateCount);
+	ImGui::Text("AABB Overlaps: %u", m_ConfirmedCollisionCount);
 	ImGui::End();
 }
 
@@ -2923,25 +3358,46 @@ void Sandbox3D::OnImGuiRender()
 						std::string templateEditorError;
 						if (LoadActorTemplateEditorFromFile(entry.FullPath, templateEditorError))
 						{
+							ResetMapJsonEditor();
 							m_SelectedActors.clear();
 							m_ActiveActor = nullptr;
 						}
 						else
 						{
 							ResetActorTemplateEditor();
+							ResetMapJsonEditor();
 							m_MapStatus = Achengine::format("Template load failed: %s", templateEditorError.c_str());
 						}
 					}
 					else if (jsonType == EJsonAssetType::Map)
 					{
 						ResetActorTemplateEditor();
+						g_MapJsonEditor.IsActive = true;
+						g_MapJsonEditor.FilePath = entry.FullPath;
+						m_SelectedActors.clear();
+						m_ActiveActor = nullptr;
 						std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
 						m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
+
+						FJsonValue mapRoot;
+						std::string mapError;
+						if (ParseJsonFile(entry.FullPath, mapRoot, mapError) && mapRoot.Type == FJsonValue::EType::Object)
+						{
+							ReinitializeGameGlobals();
+							ApplyGameGlobalsFromJson(mapRoot, m_GameGlobals);
+							g_MapJsonEditor.Status = "Editing game globals for selected map";
+						}
+						else
+						{
+							g_MapJsonEditor.Status = Achengine::format("Failed to read game globals: %s", mapError.c_str());
+						}
+
 						m_MapStatus = "Map selected";
 					}
 					else
 					{
 						ResetActorTemplateEditor();
+						ResetMapJsonEditor();
 						m_MapStatus = "JSON is not a map or actor template";
 					}
 				}
@@ -2959,18 +3415,25 @@ void Sandbox3D::OnImGuiRender()
 				std::string templateEditorError;
 				if (LoadActorTemplateEditorFromFile(entry.FullPath, templateEditorError))
 				{
+					ResetMapJsonEditor();
 					m_SelectedActors.clear();
 					m_ActiveActor = nullptr;
 				}
 				else
 				{
 					ResetActorTemplateEditor();
+					ResetMapJsonEditor();
 					m_MapStatus = Achengine::format("Template load failed: %s", templateEditorError.c_str());
 				}
 			}
 			else if (jsonType == EJsonAssetType::Map)
 			{
 				ResetActorTemplateEditor();
+				g_MapJsonEditor.IsActive = true;
+				g_MapJsonEditor.FilePath = entry.FullPath;
+				g_MapJsonEditor.Status = "Loaded map and editing game globals";
+				m_SelectedActors.clear();
+				m_ActiveActor = nullptr;
 				std::strncpy(m_MapPathBuffer, entry.FullPath.c_str(), sizeof(m_MapPathBuffer) - 1);
 				m_MapPathBuffer[sizeof(m_MapPathBuffer) - 1] = '\0';
 				LoadMapFromFile(entry.FullPath);
@@ -2981,6 +3444,7 @@ void Sandbox3D::OnImGuiRender()
 			}
 			else
 			{
+				ResetMapJsonEditor();
 				m_MapStatus = "JSON is not a map or actor template";
 			}
 		}
@@ -3012,21 +3476,6 @@ void Sandbox3D::OnImGuiRender()
 		}
 	}
 
-	struct FComponentChoice
-	{
-		const char* ClassName;
-		const char* TemplateType;
-		bool Selectable;
-	};
-
-	static const FComponentChoice componentChoices[] = {
-		{"UActorComponent (base)", "actorComponent", false},
-		{"UMesh", "mesh", true},
-		{"UWaterMesh", "water", true},
-		{"ULightComponent", "light", true},
-		{"UCameraComponent", "camera", true}
-	};
-
 	static char createActorTemplateName[128] = "NewActorTemplate";
 	static char createActorFileName[128] = "NewActorTemplate.json";
 	static char createActorMeshModelPath[512] = "../models/Cube.fbx";
@@ -3047,6 +3496,10 @@ void Sandbox3D::OnImGuiRender()
 	static float createActorCameraFov = 90.0f;
 	static float createActorCameraNearClip = 0.1f;
 	static float createActorCameraFarClip = 1000.0f;
+	static float createActorMovementAcceleration = 5.0f;
+	static float createActorMovementMaxSpeed = 10.0f;
+	static float createActorMovementJumpImpulse = 12.0f;
+	static float createActorMovementGroundTraceDistance = 2.5f;
 
 	if (ImGui::BeginPopupModal("CreateActorConfigPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
@@ -3067,26 +3520,25 @@ void Sandbox3D::OnImGuiRender()
 			ImGui::TextUnformatted("ActorComponent classes");
 			ImGui::Separator();
 			ImGui::BeginChild("ComponentScrollBox", ImVec2(320.0f, 180.0f), true);
-			for (const FComponentChoice& choice : componentChoices)
+			for (const Achengine::UActorComponent::FRegisteredComponentClass& descriptor : Achengine::UActorComponent::GetRegisteredComponentClasses())
 			{
-				if (!choice.Selectable)
+				if (!descriptor.ExposeInTemplatePicker || !descriptor.TypeTag || descriptor.TypeTag[0] == '\0' || !descriptor.ClassName || descriptor.ClassName[0] == '\0')
 				{
-					ImGui::TextDisabled("%s", choice.ClassName);
 					continue;
 				}
 
-				const bool isSelected = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), choice.TemplateType) != selectedComponentTypes.end();
-				const std::string label = std::string(choice.ClassName) + " (" + choice.TemplateType + ")";
+				const bool isSelected = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), descriptor.TypeTag) != selectedComponentTypes.end();
+				const std::string label = std::string(descriptor.ClassName) + " (" + descriptor.TypeTag + ")";
 				if (ImGui::Selectable(label.c_str(), isSelected))
 				{
 					if (isSelected)
 					{
-						auto it = std::remove(selectedComponentTypes.begin(), selectedComponentTypes.end(), choice.TemplateType);
+						auto it = std::remove(selectedComponentTypes.begin(), selectedComponentTypes.end(), descriptor.TypeTag);
 						selectedComponentTypes.erase(it, selectedComponentTypes.end());
 					}
 					else
 					{
-						selectedComponentTypes.push_back(choice.TemplateType);
+						selectedComponentTypes.push_back(descriptor.TypeTag);
 					}
 				}
 			}
@@ -3130,8 +3582,9 @@ void Sandbox3D::OnImGuiRender()
 		const bool hasMesh = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "mesh") != selectedComponentTypes.end();
 		const bool hasLight = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "light") != selectedComponentTypes.end();
 		const bool hasCamera = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "camera") != selectedComponentTypes.end();
+		const bool hasMovement = std::find(selectedComponentTypes.begin(), selectedComponentTypes.end(), "movement") != selectedComponentTypes.end();
 
-		if (hasMesh || hasLight || hasCamera)
+		if (hasMesh || hasLight || hasCamera || hasMovement)
 		{
 			ImGui::Separator();
 			ImGui::TextUnformatted("Component properties:");
@@ -3239,6 +3692,16 @@ void Sandbox3D::OnImGuiRender()
 				ImGui::InputFloat("Camera Near Clip", &createActorCameraNearClip);
 				ImGui::InputFloat("Camera Far Clip", &createActorCameraFarClip);
 			}
+
+			if (hasMovement)
+			{
+				ImGui::Spacing();
+				ImGui::TextUnformatted("movement");
+				ImGui::InputFloat("Movement Acceleration", &createActorMovementAcceleration);
+				ImGui::InputFloat("Movement Max Speed", &createActorMovementMaxSpeed);
+				ImGui::InputFloat("Movement Jump Impulse", &createActorMovementJumpImpulse);
+				ImGui::InputFloat("Movement Ground Trace Distance", &createActorMovementGroundTraceDistance);
+			}
 		}
 
 		ImGui::Separator();
@@ -3315,6 +3778,15 @@ void Sandbox3D::OnImGuiRender()
 						actorJson << "        \"fov\": " << createActorCameraFov << ",\n";
 						actorJson << "        \"nearClip\": " << createActorCameraNearClip << ",\n";
 						actorJson << "        \"farClip\": " << createActorCameraFarClip << "\n";
+						actorJson << "      }\n";
+					}
+					else if (componentType == "movement")
+					{
+						actorJson << ",\n      \"movement\": {\n";
+						actorJson << "        \"acceleration\": " << createActorMovementAcceleration << ",\n";
+						actorJson << "        \"maxSpeed\": " << createActorMovementMaxSpeed << ",\n";
+						actorJson << "        \"jumpImpulse\": " << createActorMovementJumpImpulse << ",\n";
+						actorJson << "        \"groundTraceDistance\": " << createActorMovementGroundTraceDistance << "\n";
 						actorJson << "      }\n";
 					}
 					else
@@ -3928,6 +4400,7 @@ void Sandbox3D::OnEvent(Achengine::Event& event)
 			return false;
 		});
 
+			Achengine::GameGlobals::SetActive(nullptr);
 		if (event.IsHandled())
 		{
 			return;
@@ -3935,6 +4408,7 @@ void Sandbox3D::OnEvent(Achengine::Event& event)
 
 		if (!m_PlayerController || !m_PlayerController->GetPossessedPlayer())
 		{
+			Achengine::GameGlobals::SetActive(m_GameGlobals);
 			EnsurePlaySessionActorPossession();
 		}
 

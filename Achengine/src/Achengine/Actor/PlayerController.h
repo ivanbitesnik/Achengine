@@ -52,11 +52,7 @@ namespace Achengine
             InPlayer->SetPlayerController(nullptr);
         }
 
-        virtual bool OnKeyPressed(const KeyPressedEvent& InEvent)
-        {
-            (void)InEvent;
-            return false;
-        }
+        virtual bool OnKeyPressed(const KeyPressedEvent& InEvent);
 
         virtual bool OnKeyReleased(const KeyReleasedEvent& InEvent)
         {

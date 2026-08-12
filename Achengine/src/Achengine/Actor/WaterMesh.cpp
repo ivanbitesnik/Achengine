@@ -6,6 +6,11 @@
 
 namespace Achengine
 {
+    namespace
+    {
+        const bool s_RegisteredWaterMeshClass = UActorComponent::RegisterComponentClass<UWaterMesh>("UWaterMesh", "water");
+    }
+
     UWaterMesh::UWaterMesh()
     {
 #ifdef ACHENGINE_PLATFORM_LINUX

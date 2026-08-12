@@ -7,8 +7,112 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <unordered_map>
+
 namespace Achengine
 {
+    namespace
+    {
+        struct FRegisteredComponentRegistry
+        {
+            std::vector<UActorComponent::FRegisteredComponentClass> Classes;
+            std::unordered_map<std::string, size_t> TypeTagToIndex;
+            std::unordered_map<std::type_index, size_t> TypeToIndex;
+        };
+
+        FRegisteredComponentRegistry& GetComponentRegistry()
+        {
+            static FRegisteredComponentRegistry registry;
+            return registry;
+        }
+    }
+
+    bool UActorComponent::RegisterComponentClass(
+        const std::type_index& typeIndex,
+        const char* className,
+        const char* typeTag,
+        bool exposeInTemplatePicker,
+        std::function<UActorComponent*()> factory)
+    {
+        if (!className || className[0] == '\0' || !typeTag || typeTag[0] == '\0' || !factory)
+        {
+            return false;
+        }
+
+        FRegisteredComponentRegistry& registry = GetComponentRegistry();
+        const std::string typeTagKey = typeTag;
+        auto existingTag = registry.TypeTagToIndex.find(typeTagKey);
+        if (existingTag != registry.TypeTagToIndex.end())
+        {
+            UActorComponent::FRegisteredComponentClass& entry = registry.Classes[existingTag->second];
+            entry.ClassName = className;
+            entry.TypeTag = typeTag;
+            entry.ExposeInTemplatePicker = exposeInTemplatePicker;
+            entry.Factory = factory;
+            registry.TypeToIndex[typeIndex] = existingTag->second;
+            return true;
+        }
+
+        auto existingType = registry.TypeToIndex.find(typeIndex);
+        if (existingType != registry.TypeToIndex.end())
+        {
+            UActorComponent::FRegisteredComponentClass& entry = registry.Classes[existingType->second];
+            entry.ClassName = className;
+            entry.TypeTag = typeTag;
+            entry.ExposeInTemplatePicker = exposeInTemplatePicker;
+            entry.Factory = factory;
+            registry.TypeTagToIndex[typeTagKey] = existingType->second;
+            return true;
+        }
+
+        UActorComponent::FRegisteredComponentClass entry;
+        entry.ClassName = className;
+        entry.TypeTag = typeTag;
+        entry.ExposeInTemplatePicker = exposeInTemplatePicker;
+        entry.Factory = factory;
+
+        const size_t index = registry.Classes.size();
+        registry.Classes.push_back(entry);
+        registry.TypeTagToIndex[typeTagKey] = index;
+        registry.TypeToIndex[typeIndex] = index;
+        return true;
+    }
+
+    const std::vector<UActorComponent::FRegisteredComponentClass>& UActorComponent::GetRegisteredComponentClasses()
+    {
+        return GetComponentRegistry().Classes;
+    }
+
+    const UActorComponent::FRegisteredComponentClass* UActorComponent::FindRegisteredComponentClassByTypeTag(const std::string& typeTag)
+    {
+        const FRegisteredComponentRegistry& registry = GetComponentRegistry();
+        auto it = registry.TypeTagToIndex.find(typeTag);
+        if (it == registry.TypeTagToIndex.end() || it->second >= registry.Classes.size())
+        {
+            return nullptr;
+        }
+
+        return &registry.Classes[it->second];
+    }
+
+    const UActorComponent::FRegisteredComponentClass* UActorComponent::FindRegisteredComponentClassByInstance(const UActorComponent* component)
+    {
+        if (!component)
+        {
+            return nullptr;
+        }
+
+        const std::type_index typeIndex(typeid(*component));
+        const FRegisteredComponentRegistry& registry = GetComponentRegistry();
+        auto it = registry.TypeToIndex.find(typeIndex);
+        if (it == registry.TypeToIndex.end() || it->second >= registry.Classes.size())
+        {
+            return nullptr;
+        }
+
+        return &registry.Classes[it->second];
+    }
+
     glm::mat4 UActorComponent::GetComponentTransform() const
     {
         glm::vec3 scale = GetComponentScale();

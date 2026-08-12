@@ -104,6 +104,7 @@ OBJECTS := \
 	$(OBJDIR)/CameraComponent.o \
 	$(OBJDIR)/LightComponent.o \
 	$(OBJDIR)/Mesh.o \
+	$(OBJDIR)/MovementComponent.o \
 	$(OBJDIR)/Player.o \
 	$(OBJDIR)/PlayerController.o \
 	$(OBJDIR)/WaterMesh.o \
@@ -213,6 +214,9 @@ $(OBJDIR)/LightComponent.o: src/Achengine/Actor/LightComponent.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Mesh.o: src/Achengine/Actor/Mesh.cpp
+	@echo $(notdir $<)
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/MovementComponent.o: src/Achengine/Actor/MovementComponent.cpp
 	@echo $(notdir $<)
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/Player.o: src/Achengine/Actor/Player.cpp

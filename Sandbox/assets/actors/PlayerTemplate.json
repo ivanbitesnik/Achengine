@@ -1,0 +1,18 @@
+{
+  "templateName": "PlayerTemplate",
+  "components": [
+    {
+      "type": "mesh",
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/models/Sphere.fbx"
+    },
+    {
+      "type": "movement",
+      "movement": {
+        "acceleration": 52.5,
+        "maxSpeed": 200,
+        "jumpImpulse": 12,
+        "groundTraceDistance": 1
+      }
+    }
+  ]
+}

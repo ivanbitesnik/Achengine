@@ -48,6 +48,9 @@ namespace Achengine
             void SetActorScale(glm::vec3 NewScale) { ActorScale = NewScale; }
             glm::vec3 GetActorScale() const { return ActorScale; }
 
+            virtual void HandleCollisionBegin(UActorComponent* CollidedComponent);
+            virtual void HandleCollisionEnd(UActorComponent* CollidedComponent);
+
             virtual FBounds GetBounds() const;
 
             glm::mat4 GetActorTransform() const;

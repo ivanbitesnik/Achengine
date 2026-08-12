@@ -9,6 +9,8 @@
 #include "Achengine/Core/Log.h"
 #include "Achengine/Core/Timestep.h"
 #include "Achengine/Core/Utilities.h"
+#include "Achengine/Collision/CollisionHelpers.h"
+#include "Achengine/Collision/CollisionOctree.h"
 // ----------------------------------------
 
 // --- UI ---------------------------------
@@ -46,3 +48,6 @@
 #include "Achengine/Actor/PlayerController.h"
 #include "Achengine/Actor/LightComponent.h"
 #include "Achengine/Actor/WaterMesh.h"
+
+// ---- Globals ----------------------------
+#include "Achengine/Globals/GameGlobals.h"

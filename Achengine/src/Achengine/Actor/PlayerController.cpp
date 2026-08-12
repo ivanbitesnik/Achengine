@@ -1,8 +1,29 @@
 #include "Achenginepch.h"
 #include "PlayerController.h"
 
+#include "Achengine/Actor/MovementComponent.h"
+
 namespace Achengine
 {
+    bool APlayerController::OnKeyPressed(const KeyPressedEvent& InEvent)
+    {
+        if (!m_PossessedPlayer)
+        {
+            return false;
+        }
+
+        if (InEvent.GetKeyCode() == ACHENGINE_KEY_SPACE && InEvent.GetRepeatCount() == 0)
+        {
+            if (UMovementComponent* movementComponent = m_PossessedPlayer->GetMovementComponent())
+            {
+                movementComponent->RequestJump();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void APlayerController::Possess(APlayer* InPlayer)
     {
         if (m_PossessedPlayer == InPlayer)
@@ -74,7 +95,16 @@ namespace Achengine
             if (IsKeyDown(ACHENGINE_KEY_D)) { moveDirection += right; }
             if (IsKeyDown(ACHENGINE_KEY_A)) { moveDirection -= right; }
 
-            if (glm::length(moveDirection) > 0.0001f)
+            if (UMovementComponent* movementComponent = m_PossessedPlayer->GetMovementComponent())
+            {
+                if (glm::length(moveDirection) > 0.0001f)
+                {
+                    moveDirection = glm::normalize(moveDirection);
+                }
+
+                movementComponent->AddInputVector(moveDirection);
+            }
+            else if (glm::length(moveDirection) > 0.0001f)
             {
                 moveDirection = glm::normalize(moveDirection);
                 m_PossessedPlayer->SetActorLocation(m_PossessedPlayer->GetActorLocation() + moveDirection * m_MoveSpeed * DeltaTime);

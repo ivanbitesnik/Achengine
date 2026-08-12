@@ -89,6 +89,16 @@ namespace Achengine
         }
     }
 
+    void AActor::HandleCollisionBegin(UActorComponent* CollidedComponent)
+    {
+        (void)CollidedComponent;
+    }
+
+    void AActor::HandleCollisionEnd(UActorComponent* CollidedComponent)
+    {
+        (void)CollidedComponent;
+    }
+
     FBounds AActor::GetBounds() const
     {
         FBounds actorBounds;

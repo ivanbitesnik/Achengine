@@ -10,6 +10,11 @@
 
 namespace Achengine
 {
+    namespace
+    {
+        const bool s_RegisteredCameraClass = UActorComponent::RegisterComponentClass<UCameraComponent>("UCameraComponent", "camera");
+    }
+
     UCameraComponent::UCameraComponent()
     {
         UpdateProjection();

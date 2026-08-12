@@ -23,6 +23,11 @@ namespace Achengine
 {
     namespace
     {
+        const bool s_RegisteredMeshClass = UActorComponent::RegisterComponentClass<UMesh>("UMesh", "mesh");
+    }
+
+    namespace
+    {
         std::string GetDirectoryFromPath(const std::string& filePath)
         {
             const size_t slash = filePath.find_last_of("/\\");
@@ -83,6 +88,16 @@ namespace Achengine
             return normalized.substr(slash + 1);
         }
     }
+
+        UMesh::UMesh()
+        {
+    #ifdef ACHENGINE_PLATFORM_LINUX
+        m_ShaderPath = "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/shaders/ModelPBR.glsl";
+    #else
+        m_ShaderPath = "assets/shaders/ModelPBR.glsl";
+    #endif
+        Initialize();
+        }
 
     UMesh::UMesh(const std::string& modelPath, const std::string& shaderPath)
     {

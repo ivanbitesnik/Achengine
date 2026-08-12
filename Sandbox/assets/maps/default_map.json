@@ -1,5 +1,8 @@
 {
   "version": 1,
+  "gameGlobals": {
+    "gravity": 9.811
+  },
   "actors": [
     {
       "name": "Box_1",
@@ -15,8 +18,8 @@
           "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
         }
       ]
@@ -24,14 +27,14 @@
     {
       "name": "LightTemplate",
       "actorTemplate": "../actors/LightTemplate.json",
-      "location": [-172.117920, 35.259109, 239.226990],
+      "location": [323.329987, 0.000000, 125.900269],
       "rotationAxis": [1.000000, 0.000000, 0.000000],
       "rotationAngle": 0,
       "scale": [1.000000, 1.000000, 1.000000],
       "light": {
         "color": [1.000000, 1.000000, 1.000000],
-        "ambient": [1.000000, 1.000000, 1.000000],
-        "diffuse": [1.000000, 1.000000, 1.000000],
+        "ambient": [1.000000, 0.000000, 0.000000],
+        "diffuse": [1.000000, 0.000000, 0.000000],
         "specular": [1.000000, 1.000000, 1.000000],
         "constant": 1,
         "linear": 0.022,
@@ -43,13 +46,15 @@
           "type": "light",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "light": {
             "color": [1.000000, 1.000000, 1.000000],
-            "ambient": [1.000000, 1.000000, 1.000000],
-            "diffuse": [1.000000, 1.000000, 1.000000],
-            "specular": [1.000000, 1.000000, 1.000000],
+            "ambient": [1.000000, 0.000000, 0.000000],
+            "diffuse": [1.000000, 0.000000, 0.000000],
+            "specular": [1.000000, 1.000000, 1.000000]
+          },
+          "light": {
             "constant": 1,
             "linear": 0.022,
             "quadratic": 0.0019
@@ -79,13 +84,15 @@
           "type": "light",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "light": {
             "color": [1.000000, 1.000000, 1.000000],
             "ambient": [1.000000, 1.000000, 0.000000],
             "diffuse": [1.000000, 1.000000, 1.000000],
-            "specular": [1.000000, 1.000000, 1.000000],
+            "specular": [1.000000, 1.000000, 1.000000]
+          },
+          "light": {
             "constant": 1,
             "linear": 0.022,
             "quadratic": 0.0019
@@ -115,13 +122,15 @@
           "type": "light",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "light": {
             "color": [1.000000, 1.000000, 1.000000],
             "ambient": [0.000000, 0.000000, 1.000000],
             "diffuse": [1.000000, 1.000000, 1.000000],
-            "specular": [1.000000, 1.000000, 1.000000],
+            "specular": [1.000000, 1.000000, 1.000000]
+          },
+          "light": {
             "constant": 1,
             "linear": 0.022,
             "quadratic": 0.0019
@@ -143,9 +152,67 @@
           "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
+        }
+      ]
+    },
+    {
+      "name": "Box_3",
+      "actorTemplate": "../actors/CrateTemplate.json",
+      "location": [-40.000000, 60.000000, 0.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
+      "rotationAngle": 0,
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx",
+      "components": [
+        {
+          "index": 0,
+          "type": "mesh",
+          "location": [0.000000, 0.000000, 0.000000],
+          "rotationAxis": [0.577350, 0.577350, 0.577350],
+          "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
+          "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
+        }
+      ]
+    },
+    {
+      "name": "LightTemplate",
+      "actorTemplate": "../actors/LightTemplate.json",
+      "location": [-172.117920, 35.259109, 239.226990],
+      "rotationAxis": [1.000000, 0.000000, 0.000000],
+      "rotationAngle": 0,
+      "scale": [1.000000, 1.000000, 1.000000],
+      "light": {
+        "color": [1.000000, 1.000000, 1.000000],
+        "ambient": [1.000000, 1.000000, 1.000000],
+        "diffuse": [1.000000, 1.000000, 1.000000],
+        "specular": [1.000000, 1.000000, 1.000000],
+        "constant": 1,
+        "linear": 0.022,
+        "quadratic": 0.0019
+      },
+      "components": [
+        {
+          "index": 0,
+          "type": "light",
+          "location": [0.000000, 0.000000, 0.000000],
+          "rotationAxis": [0.577350, 0.577350, 0.577350],
+          "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
+          "light": {
+            "color": [1.000000, 1.000000, 1.000000],
+            "ambient": [1.000000, 1.000000, 1.000000],
+            "diffuse": [1.000000, 1.000000, 1.000000],
+            "specular": [1.000000, 1.000000, 1.000000]
+          },
+          "light": {
+            "constant": 1,
+            "linear": 0.022,
+            "quadratic": 0.0019
+          }
         }
       ]
     },
@@ -163,8 +230,8 @@
           "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
         }
       ]
@@ -182,15 +249,24 @@
           "type": "water",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
-          "scale": [1.000000, 1.000000, 1.000000]
+          "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0
         }
       ]
     },
     {
-      "name": "Box_5",
+      "name": "PlayerStart",
+      "actorTemplate": "../actors/PlayerStartTemplate.json",
+      "location": [-91.539551, 26.193354, 121.794121],
+      "rotationAxis": [0.000000, 1.000000, 0.000000],
+      "rotationAngle": 90,
+      "scale": [1.000000, 1.000000, 1.000000],
+      "components": []
+    },
+    {
+      "name": "Box_4",
       "actorTemplate": "../actors/CrateTemplate.json",
-      "location": [0.000000, 60.000000, -40.000000],
+      "location": [0.000000, 60.000000, 40.000000],
       "rotationAxis": [0.577350, 0.577350, 0.577350],
       "rotationAngle": 0,
       "scale": [10.000000, 10.000000, 10.000000],
@@ -201,8 +277,8 @@
           "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
         }
       ]
@@ -229,13 +305,15 @@
           "type": "light",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
+          "rotationAngle": 0,
           "light": {
             "color": [1.000000, 1.000000, 1.000000],
             "ambient": [1.000000, 1.000000, 1.000000],
             "diffuse": [1.000000, 1.000000, 1.000000],
-            "specular": [1.000000, 1.000000, 1.000000],
+            "specular": [1.000000, 1.000000, 1.000000]
+          },
+          "light": {
             "constant": 1,
             "linear": 0.022,
             "quadratic": 0.0019
@@ -244,49 +322,24 @@
       ]
     },
     {
-      "name": "LightTemplate",
-      "actorTemplate": "../actors/LightTemplate.json",
-      "location": [323.329987, 0.000000, 125.900269],
-      "rotationAxis": [1.000000, 0.000000, 0.000000],
+      "name": "Box_5",
+      "actorTemplate": "../actors/CrateTemplate.json",
+      "location": [0.000000, 60.000000, -40.000000],
+      "rotationAxis": [0.577350, 0.577350, 0.577350],
       "rotationAngle": 0,
-      "scale": [1.000000, 1.000000, 1.000000],
-      "light": {
-        "color": [1.000000, 1.000000, 1.000000],
-        "ambient": [1.000000, 0.000000, 0.000000],
-        "diffuse": [1.000000, 0.000000, 0.000000],
-        "specular": [1.000000, 1.000000, 1.000000],
-        "constant": 1,
-        "linear": 0.022,
-        "quadratic": 0.0019
-      },
+      "scale": [10.000000, 10.000000, 10.000000],
+      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx",
       "components": [
         {
           "index": 0,
-          "type": "light",
+          "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
-          "light": {
-            "color": [1.000000, 1.000000, 1.000000],
-            "ambient": [1.000000, 0.000000, 0.000000],
-            "diffuse": [1.000000, 0.000000, 0.000000],
-            "specular": [1.000000, 1.000000, 1.000000],
-            "constant": 1,
-            "linear": 0.022,
-            "quadratic": 0.0019
-          }
+          "rotationAngle": 0,
+          "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
         }
       ]
-    },
-    {
-      "name": "PlayerStart",
-      "actorTemplate": "../actors/PlayerStartTemplate.json",
-      "location": [-91.539551, 26.193354, 121.794121],
-      "rotationAxis": [0.000000, 1.000000, 0.000000],
-      "rotationAngle": 90,
-      "scale": [1.000000, 1.000000, 1.000000],
-      "components": []
     },
     {
       "name": "CrateTemplate",
@@ -302,48 +355,8 @@
           "type": "mesh",
           "location": [0.000000, 0.000000, 0.000000],
           "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
           "scale": [1.000000, 1.000000, 1.000000],
-          "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
-        }
-      ]
-    },
-    {
-      "name": "Box_3",
-      "actorTemplate": "../actors/CrateTemplate.json",
-      "location": [-40.000000, 60.000000, 0.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000],
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx",
-      "components": [
-        {
-          "index": 0,
-          "type": "mesh",
-          "location": [0.000000, 0.000000, 0.000000],
-          "rotationAxis": [0.577350, 0.577350, 0.577350],
           "rotationAngle": 0,
-          "scale": [1.000000, 1.000000, 1.000000],
-          "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
-        }
-      ]
-    },
-    {
-      "name": "Box_4",
-      "actorTemplate": "../actors/CrateTemplate.json",
-      "location": [0.000000, 60.000000, 40.000000],
-      "rotationAxis": [0.577350, 0.577350, 0.577350],
-      "rotationAngle": 0,
-      "scale": [10.000000, 10.000000, 10.000000],
-      "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx",
-      "components": [
-        {
-          "index": 0,
-          "type": "mesh",
-          "location": [0.000000, 0.000000, 0.000000],
-          "rotationAxis": [0.577350, 0.577350, 0.577350],
-          "rotationAngle": 0,
-          "scale": [1.000000, 1.000000, 1.000000],
           "modelPath": "/home/acheto/Desktop/projects/Achengine/Sandbox/assets/maps/../actors/../models/Cube.fbx"
         }
       ]

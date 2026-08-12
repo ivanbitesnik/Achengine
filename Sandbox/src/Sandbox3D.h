@@ -2,6 +2,7 @@
 
 #include "Achengine.h"
 
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -23,10 +24,12 @@ public:
 private:
 	bool SaveMapToFile(const std::string& filePath);
 	bool LoadMapFromFile(const std::string& filePath);
+	void ReinitializeGameGlobals();
 	void SpawnDefaultScene();
 	void StartPlayMode();
 	void StopPlayMode();
 	void EnsurePlaySessionActorPossession();
+	void UpdateCollisionBroadPhase();
 	Achengine::Camera* GetActiveSceneCamera() const;
 	glm::vec3 GetActiveSceneCameraPosition(const Achengine::Camera* camera) const;
 	void RenderOutlinerPanel(const ImGuiViewport* viewport, float minOutlinerWidth, float maxOutlinerWidth);
@@ -48,7 +51,13 @@ private:
 	Achengine::EditorCameraController* m_CameraController;
 	Achengine::APlayerController* m_PlayerController = nullptr;
 	Achengine::APlayer* m_PlayerActor = nullptr;
+	Achengine::GameGlobals* m_GameGlobals = nullptr;
+	Achengine::CollisionOctree m_CollisionOctree;
 	bool m_IsPlaying = false;
+	uint32_t m_CollisionCandidateCount = 0;
+	uint32_t m_ConfirmedCollisionCount = 0;
+	std::unordered_set<uint64_t> m_ActiveCollisionPairs;
+	std::unordered_map<uint64_t, std::pair<Achengine::UActorComponent*, Achengine::UActorComponent*>> m_ActiveCollisionComponents;
 
 	Achengine::AActor* m_ModelActor = nullptr;
 	Achengine::UMesh* m_ModelMesh = nullptr;
